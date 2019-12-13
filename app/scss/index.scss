@@ -1,0 +1,13 @@
+.grider {
+  table {
+    border: 0;
+    border-left: 1px solid #ccc;
+    border-top: 1px solid #ccc;
+
+    td, th {
+      border: 0;
+      border-right: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+    }
+  }
+}
