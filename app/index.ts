@@ -1,2 +1,2 @@
-export {Lister} from './lister';
-export {Column} from './column';
+export {Column} from '~/column';
+export {Lister} from '~/lister';

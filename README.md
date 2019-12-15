@@ -1,11 +1,43 @@
-# react-data-grider
+# react-lister
 
-A Powerful Data Grid.
+react data list
 
-## Installation
+## Development
+
+- Install npm packages
+
+    ```
+  npm install
+    ```
+
+- Launch dev server
+
+    ```
+  npm run start
+    ```
+
+- Lint
+
+    ```
+  npm run lint
+    ```
+
+- Build
+
+    ```
+  npm run build
+    ```
+
+
+
+## Install react-miniui
 
 ```bash
-npm install react-data-grider --save
+npm install react-lister --save
 ```
 
 ## Usage
+
+```js
+import Lister, {column} from 'react-lister';
+```

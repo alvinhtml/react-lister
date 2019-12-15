@@ -1,5 +1,5 @@
-import * as React from 'react';
-import {Column} from './column';
+import * as React from "react";
+import {Column} from '~/column';
 
 import './scss/index.scss';
 
@@ -13,14 +13,16 @@ type State = {
   currentPage: number;
 }
 
+console.log(React);
+
 export class Lister extends React.Component<Props, State> {
   state = {
     currentPage: typeof this.props.currentPage !== 'undefined' ? this.props.currentPage : 1
   }
 
-  private handleGotoPage(page: number) {
-
-  }
+  // private handleGotoPage(page: number) {
+  //
+  // }
 
   render() {
     const {columns, rows} = this.props;
