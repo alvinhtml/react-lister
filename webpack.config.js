@@ -28,8 +28,7 @@ module.exports = {
 
   //入口
   entry: {
-    // index: './app/index.ts',
-    index: './app/index.ts'
+    index: './app/index.tsx'
   },
 
   //出口
@@ -45,7 +44,7 @@ module.exports = {
     alias: {
       '~': path.resolve(__dirname, './app')
     },
-    extensions: ['.ts', '.tsx', '.scss', '.css'] //配置省略后缀名
+    extensions: ['.js', '.jsx', '.ts', '.tsx', '.scss', '.css'] //配置省略后缀名
   },
 
   // 不打包 react 和 react-dom
@@ -99,6 +98,17 @@ module.exports = {
 
   //插件
   plugins: [
+    // new HtmlWebpackPlugin({
+    //     template: './app/index.html',
+    //     filename: 'index.html',
+    //     // minify: {
+    //     //     removeComments: true,
+    //     //     removeAttributeQuotes: true,
+    //     //     collapseWhitespace: true
+    //     // },
+    //     hash: true,
+    //     chunks: ['index']
+    // }),
     new MiniCssExtractPlugin({
         filename: 'lister.css'
     })

@@ -1,22 +1,20 @@
 import * as React from "react";
-import {Column} from '~/column';
+import {Column} from './column';
 
 import './scss/index.scss';
 
-type Props = {
+type IListerProps = {
   columns: Array<Column>;
   rows: Array<any>;
   currentPage?: number;
 }
 
-type State = {
+type IListerState = {
   currentPage: number;
 }
 
-console.log(React);
-
-export class Lister extends React.Component<Props, State> {
-  state = {
+export class Lister extends React.Component<IListerProps, IListerState> {
+  public state = {
     currentPage: typeof this.props.currentPage !== 'undefined' ? this.props.currentPage : 1
   }
 
@@ -24,7 +22,7 @@ export class Lister extends React.Component<Props, State> {
   //
   // }
 
-  render() {
+  public render() {
     const {columns, rows} = this.props;
 
     return (
@@ -39,7 +37,7 @@ export class Lister extends React.Component<Props, State> {
           <tbody>
             {rows.map((row, i) => (
               <tr key={i}>
-                {columns.map(column => <td key={column.title}>{column.randerValue(row)}</td>)}
+                {columns.map(column => <td key={column.title}>{column.value(row)}</td>)}
               </tr>
             ))}
           </tbody>
