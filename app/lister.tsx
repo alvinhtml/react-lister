@@ -14,6 +14,7 @@ type IListerState = {
 }
 
 export class Lister extends React.Component<IListerProps, IListerState> {
+  static Column = Column;
   public state = {
     currentPage: typeof this.props.currentPage !== 'undefined' ? this.props.currentPage : 1
   }
@@ -37,7 +38,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
           <tbody>
             {rows.map((row, i) => (
               <tr key={i}>
-                {columns.map(column => <td key={column.title}>{column.value(row)}</td>)}
+                {columns.map(column => <td key={column.title}>{column.randerValue(row)}</td>)}
               </tr>
             ))}
           </tbody>

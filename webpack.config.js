@@ -6,7 +6,6 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin') //抽离 css 文件，使用这个插件需要单独配置JS和CSS压缩
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin') //压缩JS
 const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin') //压缩CSS
-// const FileManagerPlugin = require('filemanager-webpack-plugin'); //webpack copy move delete mkdir archive
 
 
 module.exports = {
@@ -98,17 +97,6 @@ module.exports = {
 
   //插件
   plugins: [
-    // new HtmlWebpackPlugin({
-    //     template: './app/index.html',
-    //     filename: 'index.html',
-    //     // minify: {
-    //     //     removeComments: true,
-    //     //     removeAttributeQuotes: true,
-    //     //     collapseWhitespace: true
-    //     // },
-    //     hash: true,
-    //     chunks: ['index']
-    // }),
     new MiniCssExtractPlugin({
         filename: 'lister.css'
     })

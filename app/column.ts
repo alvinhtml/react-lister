@@ -1,27 +1,27 @@
-interface IColumnProps {
-  title: string;
-  value: Function;
+interface IColumnOptions {
   order?: boolean;
   visibility?: boolean;
   width?: number;
   resize?: boolean;
 }
 
-class Column {
+export class Column {
   title: string;
   value: Function;
+  randerValue: Function;
   order?: boolean;
   visibility?: boolean;
   width?: number;
   resize?: boolean;
 
-  constructor(props: IColumnProps) {
-    this.title = props.title;
-    this.value = props.value;
-    this.order = !!props.order;
-    this.visibility = !!props.visibility;
-    this.width = props.width ? props.width : 200;
-    this.resize = !!props.resize;
+  constructor(title: string, getValue: Function, randerValue: Function, options: IColumnOptions) {
+    this.title = title;
+    this.value = getValue;
+    this.randerValue = randerValue;
+    this.order = !!options.order;
+    this.visibility = !!options.visibility;
+    this.width = options.width ? options.width : 200;
+    this.resize = !!options.resize;
   }
 
   static getValue(key: string): any {
@@ -29,8 +29,4 @@ class Column {
       return row[key];
     }
   }
-}
-
-export {
-  Column
 }
