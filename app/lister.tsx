@@ -30,7 +30,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
   }
 
   public render() {
-    const {columns, rows, total, limit = 10, pageSize = 9} = this.props;
+    const {columns, rows, total, limit = 10, pageSize = 7} = this.props;
     const {currentPage} = this.state;
 
     return (
