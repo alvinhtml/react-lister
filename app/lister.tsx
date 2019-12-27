@@ -39,13 +39,25 @@ export class Lister extends React.Component<IListerProps, IListerState> {
           <caption>全选</caption>
           <thead>
             <tr>
-              {columns.map(column => <th key={column.title}>{column.title}</th>)}
+              {columns.map(column => (
+                <th key={column.title}>
+                  <div className="head-cell">
+                    <div className="head-cell-title">{column.title}</div>
+                    {column.order && <div className="head-sort"><i className="fa-angle-down" /></div>}
+                  </div>
+                  {column.resize && <div className="lister-resize" />}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, i) => (
               <tr key={i}>
-                {columns.map(column => <td key={column.title}>{column.randerValue(row)}</td>)}
+                {columns.map(column => (
+                  <td key={column.title}>
+                    <div className="td-cell">{column.randerValue(row)}</div>
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
