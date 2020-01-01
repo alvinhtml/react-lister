@@ -1,3 +1,5 @@
+$border-color: #e7ecf1;
+
 .lister {
   table {
     background-color: transparent;
@@ -8,7 +10,10 @@
     width: 100%;
 
     caption {
-
+      padding: 1em 0;
+      .lister-caption {
+        display: flex;
+      }
     }
 
     td, th {
@@ -19,19 +24,19 @@
     }
 
     thead {
-      border-left: 1px solid #e7ecf1;
-      border-right: 1px solid #e7ecf1;
-      border-top: 1px solid #e7ecf1;
+      border-left: 1px solid $border-color;
+      border-right: 1px solid $border-color;
+      border-top: 1px solid $border-color;
       background-color: #f9fafb;
 
       tr {
         th {
           padding: 0.3em 0.78571429em;
-          border-bottom: 1px solid #e7ecf1;
+          border-bottom: 1px solid $border-color;
           position: relative;
 
           &:last-child {
-            border-right: 1px solid #e7ecf1;
+            border-right: 1px solid $border-color;
 
             .lister-resize {
               display: none;
@@ -50,7 +55,7 @@
               text-align: center;
 
               &:hover {
-                background-color: #e7ecf1;
+                background-color: $border-color;
               }
             }
           }
@@ -84,7 +89,7 @@
     }
 
     tbody {
-      border-left: 1px solid #e7ecf1;
+      border-left: 1px solid $border-color;
 
       tr:nth-child(2n) {
         background-color: #fcfcfd;
@@ -92,7 +97,7 @@
 
       tr {
         &>td:last-child {
-          border-right: 1px solid #e7ecf1;
+          border-right: 1px solid $border-color;
         }
       }
 
@@ -100,7 +105,7 @@
         &> .td-cell {
           margin: 0.5em 0.78571429em;
         }
-        border-bottom: 1px solid #e7ecf1;
+        border-bottom: 1px solid $border-color;
       }
     }
   }
@@ -114,7 +119,7 @@
       min-width: 2em;
       height: 2em;
       line-height: 18px;
-      border: 1px solid #e7ecf1;
+      border: 1px solid $border-color;
       box-sizing: border-box;
       line-height: 2em;
       text-align: center;
@@ -125,5 +130,22 @@
         border: 1px solid #36c6d3;
       }
     }
+  }
+}
+
+.lister-button {
+  display: inline-block;
+  position: relative;
+
+  &::before {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  &:hover::before {
+    background-color: $border-color;
   }
 }
