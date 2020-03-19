@@ -5,7 +5,7 @@ type IPageListProps = {
   total: number;
   limit: number;
   page: number;
-  pageSize: number;
+  itemSize: number;
   gotoPage: Function
 }
 export class PageList extends React.Component<IPageListProps> {
@@ -14,13 +14,15 @@ export class PageList extends React.Component<IPageListProps> {
   }
 
   public render() {
-    const {total, limit, pageSize, page} = this.props;
+    const {total, limit, itemSize, page} = this.props;
 
     // 总页数
     const pageCount: number = Math.ceil(total / limit);
-    const startPage: number = Math.min(Math.max(1, page - Math.floor(pageSize / 2)), pageCount - pageSize + 1);
 
-    const pageArray: Array<number> = Array.from(new Array(Math.min(pageCount, pageSize)), (x, i)=> i + startPage);
+    // 从第几页开始
+    const startPage: number = Math.min(Math.max(1, page - Math.floor(itemSize / 2)), pageCount - itemSize + 1);
+
+    const pageArray: Array<number> = Array.from(new Array(Math.min(pageCount, itemSize)), (x, i)=> i + startPage);
 
     const prevPage: number = Math.max(page - 1, 1);
     const nextPage: number = Math.min(page + 1, pageCount);

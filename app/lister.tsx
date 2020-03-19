@@ -11,8 +11,9 @@ type IListerProps = {
   total: number;
   limit: number;
   page?: number;
-  pageSize?: number;
+  itemSize?: number;
   selectable?: boolean;
+  onSelect?: Function;
 }
 
 type IListerState = {
@@ -20,7 +21,7 @@ type IListerState = {
   columns: Array<Column>;
   search: string;
   order: Array<string>;
-  selectIDs: Array<string>;
+  selectedIDs: Array<string>;
 }
 
 export class Lister extends React.Component<IListerProps, IListerState> {
@@ -40,7 +41,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       columns,
       search: '',
       order: [],
-      selectIDs: []
+      selectedIDs: []
     }
 
   }
@@ -52,16 +53,43 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     });
   }
 
-  public selectAll(e: any): void {
-    const selectIDs = this.props.rows.map(v => v.id);
+  public toggleSelectAll(e: any): void {
+    const selectedIDs = this.state.selectedIDs.length === 0 ? this.props.rows.map(v => v.id) : [];
+    this.selectChange(selectedIDs);
+  }
+
+  handleSelectChange(id: string, event: any) {
+    const isChecked: boolean = event.currentTarget.checked;
+    let {selectedIDs} = this.state;
+
+    if (isChecked) {
+      selectedIDs.push(id);
+    } else {
+      selectedIDs = selectedIDs.filter(v => v !== id);
+    }
+
+    this.selectChange(selectedIDs);
+
+  }
+
+  selectChange(selectedIDs: Array<string>) {
+    const {onSelect} = this.props;
+
+    if (typeof onSelect === 'function') {
+      onSelect(selectedIDs);
+    } else {
+      throw new TypeError('onSelect is not a function.');
+    }
+
     this.setState({
-      selectIDs
+      selectedIDs
     })
   }
 
+
   public render() {
-    const {columns, rows, total, limit = 10, pageSize = 7, selectable = false} = this.props;
-    const {page, selectIDs} = this.state;
+    const {columns, rows, total, limit = 10, itemSize = 7, selectable = false} = this.props;
+    const {page, selectedIDs} = this.state;
 
 
 
@@ -80,7 +108,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
           </caption>
           <thead>
             <tr>
-              {selectable && <th />}
+              {selectable && <th style={{width: '18px'}} />}
               {columns.map(column => (
                 <th key={column.title}>
                   <div className="head-cell">
@@ -98,7 +126,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                 {selectable && (
                   <td>
                     <div className="td-cell">
-                      <input checked={selectIDs.find(v => row.id === v)} type="checkbox" />
+                      <input checked={selectedIDs.includes(row.id)} onChange={this.handleSelectChange.bind(this, row.id)} type="checkbox" />
                     </div>
                   </td>
                 )}
@@ -116,7 +144,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                 <PageList
                   total={total}
                   limit={limit}
-                  pageSize={pageSize}
+                  itemSize={itemSize}
                   page={page}
                   gotoPage={this.handleGotoPage.bind(this)}
                 />
