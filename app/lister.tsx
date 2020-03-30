@@ -14,6 +14,7 @@ type IListerProps = {
   itemSize?: number;
   selectable?: boolean;
   onSelect?: Function;
+  reload?: Function;
 }
 
 type IListerState = {
@@ -51,6 +52,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     this.setState({
       page: page
     });
+    this.reload(page);
   }
 
   public toggleSelectAll(e: any): void {
@@ -58,7 +60,21 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     this.selectChange(selectedIDs);
   }
 
-  handleSelectChange(id: string, event: any) {
+  handleSelectAll(event: any): void {
+    const isChecked: boolean = event.currentTarget.checked;
+
+    let selectedIDs;
+
+    if (isChecked) {
+      selectedIDs = this.props.rows.map(v => v.id);
+    } else {
+      selectedIDs = [];
+    }
+
+    this.selectChange(selectedIDs);
+  }
+
+  handleSelectChange(id: string, event: any): void {
     const isChecked: boolean = event.currentTarget.checked;
     let {selectedIDs} = this.state;
 
@@ -69,10 +85,9 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     }
 
     this.selectChange(selectedIDs);
-
   }
 
-  selectChange(selectedIDs: Array<string>) {
+  selectChange(selectedIDs: Array<string>): void {
     const {onSelect} = this.props;
 
     if (typeof onSelect === 'function') {
@@ -86,12 +101,19 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     })
   }
 
+  reload(page: number): void {
+    const {reload} = this.props;
+
+    if (typeof reload === 'function') {
+      reload({
+        page
+      });
+    }
+  }
 
   public render() {
     const {columns, rows, total, limit = 10, itemSize = 7, selectable = false} = this.props;
     const {page, selectedIDs} = this.state;
-
-
 
     return (
       <div className="lister">
@@ -108,7 +130,11 @@ export class Lister extends React.Component<IListerProps, IListerState> {
           </caption>
           <thead>
             <tr>
-              {selectable && <th style={{width: '18px'}} />}
+              {selectable && (
+                <th style={{width: '18px'}}>
+                  <input onChange={this.handleSelectAll.bind(this)} type="checkbox" />
+                </th>
+              )}
               {columns.map(column => (
                 <th key={column.title}>
                   <div className="head-cell">
