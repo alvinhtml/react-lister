@@ -56,8 +56,13 @@ export class Lister extends React.Component<IListerProps, IListerState> {
   }
 
   public toggleSelectAll(e: any): void {
-    const selectedIDs = this.state.selectedIDs.length === 0 ? this.props.rows.map(v => v.id) : [];
-    this.selectChange(selectedIDs);
+    const {rows} = this.props;
+
+    if (this.state.selectedIDs.length === rows.length) {
+      this.selectChange([]);
+    } else {
+      this.selectChange(this.props.rows.map(v => v.id));
+    }
   }
 
   handleSelectAll(event: any): void {
@@ -115,6 +120,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     const {columns, rows, total, limit = 10, itemSize = 7, selectable = false} = this.props;
     const {page, selectedIDs} = this.state;
 
+    console.log("columns", columns);
+
     return (
       <div className="lister">
         <table>
@@ -166,7 +173,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={rows.length}>
+              <td colSpan={columns.length + (selectable ? 1 : 0)}>
                 <PageList
                   total={total}
                   limit={limit}
