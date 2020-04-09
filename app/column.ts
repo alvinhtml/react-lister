@@ -7,17 +7,17 @@ interface IColumnOptions {
 
 export class Column {
   title: string;
-  value: Function;
-  randerValue: Function;
+  key: string;
+  rander: Function;
   order?: boolean;
   visibility?: boolean;
   width?: number;
   resize?: boolean;
 
-  constructor(title: string, getValue: Function, randerValue: Function, options: IColumnOptions) {
+  constructor(title: string, key: string, rander: Function, options: IColumnOptions) {
     this.title = title;
-    this.value = getValue;
-    this.randerValue = randerValue;
+    this.key = key;
+    this.rander = rander;
     this.order = !!options.order;
     this.visibility = !!options.visibility;
     this.width = options.width ? options.width : 200;

@@ -17,13 +17,19 @@ type IListerProps = {
   reload?: Function;
 }
 
-type IListerState = {
+interface IParams {
   page: number;
-  columns: Array<Column>;
-  search: string;
-  order: Array<string>;
-  selectedIDs: Array<string>;
+  order?: Array<string>;
 }
+
+type IListerState = {
+  columns: Array<Column>;
+  selectedIDs: Array<string>;
+  params: IParams;
+}
+
+
+
 
 export class Lister extends React.Component<IListerProps, IListerState> {
   static Column = Column;
@@ -38,21 +44,23 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     const {page = 1, columns} = props;
 
     this.state = {
-      page,
       columns,
-      search: '',
-      order: [],
-      selectedIDs: []
+      selectedIDs: [],
+      params: {
+        page
+      }
     }
 
   }
 
 
   public handleGotoPage(page: number): void {
+    const params = {...this.state.params, page};
+
     this.setState({
-      page: page
+      params
     });
-    this.reload(page);
+    this.reload(params);
   }
 
   public toggleSelectAll(e: any): void {
@@ -106,19 +114,38 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     })
   }
 
-  reload(page: number): void {
+  handleOrder(title: string) {
+    const {params} = this.state;
+
+    let order: Array<string> | boolean;
+
+    if (params.order && params.order[0] === title) {
+      order = [title, params.order[1] === 'asc' ? 'desc' : 'asc']
+    } else {
+      order = [title, 'asc'];
+    }
+
+    const newParams = {...params, order};
+
+    this.setState({
+      params: newParams
+    });
+
+    this.reload(newParams);
+  }
+
+  reload(params: IParams): void {
     const {reload} = this.props;
 
     if (typeof reload === 'function') {
-      reload({
-        page
-      });
+      reload(params);
     }
   }
 
   public render() {
     const {columns, rows, total, limit = 10, itemSize = 7, selectable = false} = this.props;
-    const {page, selectedIDs} = this.state;
+    const {params, selectedIDs} = this.state;
+    const {page = 1} = params;
 
     console.log("columns", columns);
 
@@ -146,7 +173,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                 <th key={column.title}>
                   <div className="head-cell">
                     <div className="head-cell-title">{column.title}</div>
-                    {column.order && <div className="head-sort"><i className="fa-angle-down" /></div>}
+                    {column.order && <div className="head-sort" onClick={this.handleOrder.bind(this, column.key)}><i className="fa-angle-down" /></div>}
                   </div>
                   {column.resize && <div className="lister-resize" />}
                 </th>
@@ -165,7 +192,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                 )}
                 {columns.map(column => (
                   <td key={column.title}>
-                    <div className="td-cell">{column.randerValue(row)}</div>
+                    <div className="td-cell">{column.rander(row)}</div>
                   </td>
                 ))}
               </tr>
