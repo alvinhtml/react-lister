@@ -22,10 +22,19 @@ interface IParams {
   order?: Array<string>;
 }
 
+interface IDrag {
+  column: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 type IListerState = {
   columns: Array<Column>;
   selectedIDs: Array<string>;
   params: IParams;
+  drag: IDrag | null;
 }
 
 
@@ -34,9 +43,11 @@ type IListerState = {
 export class Lister extends React.Component<IListerProps, IListerState> {
   static Column = Column;
 
-  // public state = {
-  //   page: typeof this.props.page !== 'undefined' ? this.props.page : 1
-  // }
+  // 鼠标按下时 X 轴坐标
+  originX: number = 0;
+
+  // 鼠标按下时，目标对象的 offsetLeft
+  originPositionLeft: number = 0;
 
   constructor(props: IListerProps) {
     super(props);
@@ -48,9 +59,23 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       selectedIDs: [],
       params: {
         page
-      }
+      },
+      drag: null
     }
 
+    this.handleMouseUp = this.handleMouseUp.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
+
+  }
+
+  componentDidMount() {
+    document.documentElement.addEventListener("mouseup", this.handleMouseUp);
+    document.documentElement.addEventListener("mousemove", this.handleMouseMove);
+  }
+
+  componentWillUnmount() {
+    document.documentElement.removeEventListener("mouseup", this.handleMouseUp);
+    document.documentElement.removeEventListener("mousemove", this.handleMouseMove);
   }
 
 
@@ -114,15 +139,15 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     })
   }
 
-  handleOrder(title: string) {
+  handleOrder(key: string) {
     const {params} = this.state;
 
     let order: Array<string> | boolean;
 
-    if (params.order && params.order[0] === title) {
-      order = [title, params.order[1] === 'asc' ? 'desc' : 'asc']
+    if (params.order && params.order[0] === key) {
+      order = [key, params.order[1] === 'asc' ? 'desc' : 'asc']
     } else {
-      order = [title, 'asc'];
+      order = [key, 'desc'];
     }
 
     const newParams = {...params, order};
@@ -142,12 +167,88 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     }
   }
 
+  // 鼠标按下开始拖动
+  handleMouseDown(column: string, e: React.MouseEvent<HTMLDivElement>) {
+    const currentTarget: HTMLDivElement = e.currentTarget;
+    const thElement: HTMLElement | null | undefined = currentTarget.parentElement?.parentElement;
+    console.log("e.pageX", e.pageX);
+
+    if (thElement) {
+      const {left, top, width, height} = thElement.getBoundingClientRect();
+
+      this.setState({
+        drag: {
+          column,
+          left,
+          top,
+          width,
+          height
+        }
+      });
+
+      this.originPositionLeft = left;
+      this.originX = e.pageX;
+    }
+  }
+
+  handleMouseUp(e: MouseEvent) {
+    console.log("handleMouseUp", e);
+
+    this.setState({
+      drag: null
+    });
+
+  }
+
+  handleMouseMove(e: MouseEvent) {
+    const {drag} = this.state;
+
+    if (drag) {
+
+      // 移动量, 鼠标在 X 轴上移动的距离
+      const moveX = e.pageX - this.originX;
+
+      // 移动方向, moveX > 0 表示向右移动
+      const direction: boolean = moveX > 0;
+
+      // 新的 offsetLeft 等于目标对象的原始 offsetLeft 加上鼠标相对于按下时的移动量
+      const left = this.originPositionLeft + moveX;
+      this.setState({
+        drag: {...drag, left}
+      });
+
+
+
+    }
+  }
+
+  exchangeColumn(direction: boolean, distance: number, drag: IDrag) {
+    const {columns} = this.state;
+
+    // 当前的拖动列
+    const dragColumn = columns.find(v => v.key === drag.column);
+
+    if (dragColumn) {
+      // let targetColumn: Column;
+
+      if (dragColumn && direction) {
+        
+      }
+    }
+  }
+
+
+
   public render() {
-    const {columns, rows, total, limit = 10, itemSize = 7, selectable = false} = this.props;
-    const {params, selectedIDs} = this.state;
+    const {rows, total, limit = 10, itemSize = 7, selectable = false} = this.props;
+    const {columns, params, selectedIDs, drag} = this.state;
     const {page = 1} = params;
 
-    console.log("columns", columns);
+    const dragColumn = drag && columns.find(v => v.key === drag.column);
+
+
+
+    // console.log("drag", drag, this.state.originPageX);
 
     return (
       <div className="lister">
@@ -171,8 +272,11 @@ export class Lister extends React.Component<IListerProps, IListerState> {
               )}
               {columns.map(column => (
                 <th key={column.title}>
-                  <div className="head-cell">
-                    <div className="head-cell-title">{column.title}</div>
+                  <div className={(!dragColumn || dragColumn.key !== column.key) ? 'head-cell' : 'head-cell head-hidden'}>
+                    <div
+                      className="head-cell-title"
+                      onMouseDown={this.handleMouseDown.bind(this, column.key)}
+                    >{column.title}</div>
                     {column.order && <div className="head-sort" onClick={this.handleOrder.bind(this, column.key)}><i className="fa-angle-down" /></div>}
                   </div>
                   {column.resize && <div className="lister-resize" />}
@@ -192,7 +296,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                 )}
                 {columns.map(column => (
                   <td key={column.title}>
-                    <div className="td-cell">{column.rander(row)}</div>
+                    <div className={(!dragColumn || dragColumn.key !== column.key) ? 'td-cell' : 'td-cell td-hidden'}>{column.rander(row)}</div>
                   </td>
                 ))}
               </tr>
@@ -212,6 +316,35 @@ export class Lister extends React.Component<IListerProps, IListerState> {
             </tr>
           </tfoot>
         </table>
+
+        {drag && dragColumn &&
+          <table className="dragging" style={{
+            left: `${drag.left}px`,
+            top: `${drag.top}px`,
+            width: `${drag.width}px`,
+            height: `${drag.height}px`
+          }}>
+            <thead>
+              <tr>
+                <th>
+                  <div className="head-cell">
+                    <div className="head-cell-title">{dragColumn.title}</div>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={i}>
+                  <td>
+                    <div className="td-cell">{dragColumn.rander(row)}</div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        }
+
       </div>
     );
   }

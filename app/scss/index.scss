@@ -2,7 +2,7 @@ $border-color: #e7ecf1;
 
 .lister {
   table {
-    background-color: transparent;
+    // background-color: transparent;
     border: 0;
     border-collapse: collapse;
     line-height: 2em;
@@ -53,12 +53,17 @@ $border-color: #e7ecf1;
             .head-sort {
               width: 20px;
               text-align: center;
-              
+
               &:hover {
                 background-color: $border-color;
               }
             }
           }
+
+          .head-hidden {
+            visibility: hidden;
+          }
+
           .lister-resize {
             cursor: col-resize;
             display: block;
@@ -102,12 +107,22 @@ $border-color: #e7ecf1;
       }
 
       td {
+        border-bottom: 1px solid $border-color;
+
         &> .td-cell {
           margin: 0.5em 0.78571429em;
         }
-        border-bottom: 1px solid $border-color;
+
+        &> .td-hidden {
+          visibility: hidden;
+        }
       }
     }
+  }
+
+  .dragging {
+    position: fixed;
+    opacity: 0.8;
   }
 
   .lister-pagelist {
