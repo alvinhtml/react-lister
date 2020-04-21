@@ -3,7 +3,8 @@ $border-color: #e7ecf1;
 .lister {
   table {
     // background-color: transparent;
-    border: 0;
+    border: 1px solid $border-color;
+    border-bottom: 0;
     border-collapse: collapse;
     line-height: 2em;
     box-sizing: border-box;
@@ -24,19 +25,22 @@ $border-color: #e7ecf1;
     }
 
     thead {
-      border-left: 1px solid $border-color;
-      border-right: 1px solid $border-color;
-      border-top: 1px solid $border-color;
+      // border-left: 1px solid $border-color;
+      // border-right: 1px solid $border-color;
+      // border-top: 1px solid $border-color;
       background-color: #f9fafb;
 
       tr {
+        animation-fill-mode: both;
+        transition: all 0.2s ease-in-out;
+
         th {
           padding: 0.3em 0.78571429em;
           border-bottom: 1px solid $border-color;
           position: relative;
 
           &:last-child {
-            border-right: 1px solid $border-color;
+            // border-right: 1px solid $border-color;
 
             .lister-resize {
               display: none;
@@ -94,17 +98,17 @@ $border-color: #e7ecf1;
     }
 
     tbody {
-      border-left: 1px solid $border-color;
+      // border-left: 1px solid $border-color;
 
       tr:nth-child(2n) {
         background-color: #fcfcfd;
       }
 
-      tr {
-        &>td:last-child {
-          border-right: 1px solid $border-color;
-        }
-      }
+      // tr {
+      //   &>td:last-child {
+      //     border-right: 1px solid $border-color;
+      //   }
+      // }
 
       td {
         border-bottom: 1px solid $border-color;
@@ -120,10 +124,20 @@ $border-color: #e7ecf1;
     }
   }
 
-  .dragging {
+  table.drag-column {
+    position: fixed;
+    z-index: 2;
+    border-left: 0;
+    border-right: 0;
+    transition: all 0.3s ease-in-out;
+  }
+
+  table.drag-current {
     position: fixed;
     opacity: 0.8;
+    z-index: 3;
   }
+
 
   .lister-pagelist {
     padding: 0.78571429em 0;

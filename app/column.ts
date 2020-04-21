@@ -9,10 +9,10 @@ export class Column {
   title: string;
   key: string;
   rander: Function;
-  order?: boolean;
-  visibility?: boolean;
-  width?: number;
-  resize?: boolean;
+  order: boolean;
+  visibility: boolean;
+  width: number;
+  resize: boolean;
 
   constructor(title: string, key: string, rander: Function, options: IColumnOptions) {
     this.title = title;

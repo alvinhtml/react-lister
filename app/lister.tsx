@@ -22,19 +22,24 @@ interface IParams {
   order?: Array<string>;
 }
 
-interface IDrag {
-  column: string;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
+interface IColumnImage {
+  key: string,
+  column?: Column,
+  element: HTMLElement,
+  rect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  }
 }
 
 type IListerState = {
   columns: Array<Column>;
   selectedIDs: Array<string>;
   params: IParams;
-  drag: IDrag | null;
+  dragKey: string | null;
+  columnImages: Array<IColumnImage> | null;
 }
 
 
@@ -46,8 +51,17 @@ export class Lister extends React.Component<IListerProps, IListerState> {
   // 鼠标按下时 X 轴坐标
   originX: number = 0;
 
-  // 鼠标按下时，目标对象的 offsetLeft
-  originPositionLeft: number = 0;
+  // 鼠标按下时，当前拖动列的 offsetLeft
+  startLeft: number = 0;
+
+  // 鼠标松开时，当前拖动列要移动到的位置
+  endLeft: number = 0;
+
+  columns: Array<Column>;
+
+  columnImages: {
+    [key: string] : IColumnImage
+  } = {};
 
   constructor(props: IListerProps) {
     super(props);
@@ -60,8 +74,11 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       params: {
         page
       },
-      drag: null
+      dragKey: null,
+      columnImages: null,
     }
+
+    this.columns = columns;
 
     this.handleMouseUp = this.handleMouseUp.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
@@ -167,91 +184,191 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     }
   }
 
-  // 鼠标按下开始拖动
-  handleMouseDown(column: string, e: React.MouseEvent<HTMLDivElement>) {
-    const currentTarget: HTMLDivElement = e.currentTarget;
-    const thElement: HTMLElement | null | undefined = currentTarget.parentElement?.parentElement;
-    console.log("e.pageX", e.pageX);
+  /* 鼠标按下开始拖动，拖动思路：
+    1. 获取 th 的 dom 节点，并取得宽高和位置信息，储存在 this.mirrors 对象。实现：this.handleRefs()
+    2. 按下 th 开始拖动，根据 储存的 mirror 生成每一列的镜像。实现：this.handleMouseDown()
+    3. 根据鼠标移动距离，超过下一列宽度的一半，交换两列。实现：this.handleMouseMove()， this.exchangeColumn()
+   */
+  handleMouseDown(key: string, e: React.MouseEvent<HTMLDivElement>) {
 
-    if (thElement) {
-      const {left, top, width, height} = thElement.getBoundingClientRect();
+    this.setState({
+        dragKey: key,
+        columnImages: Object.keys(this.columnImages).map(v => this.columnImages[v])
+    });
 
-      this.setState({
-        drag: {
-          column,
-          left,
-          top,
-          width,
-          height
-        }
-      });
+    this.startLeft = this.columnImages[key].rect.left;
+    this.endLeft = this.columnImages[key].rect.left;
+    this.originX = e.pageX;
 
-      this.originPositionLeft = left;
-      this.originX = e.pageX;
-    }
+
+    // const thElement: HTMLElement | null | undefined = currentTarget.parentElement?.parentElement;
+    // console.log("e.pageX", e.pageX);
+    //
+    // if (thElement) {
+    //   const {left, top, width, height} = thElement.getBoundingClientRect();
+    //
+    //   this.setState({
+    //     dragKey: {
+    //       column,
+    //       left,
+    //       top,
+    //       width,
+    //       height
+    //     }
+    //   });
+    //
+
+    // }
   }
 
   handleMouseUp(e: MouseEvent) {
     console.log("handleMouseUp", e);
 
     this.setState({
-      drag: null
+      dragKey: null
     });
 
   }
 
   handleMouseMove(e: MouseEvent) {
-    const {drag} = this.state;
+    const {dragKey} = this.state;
+    const columnImages = this.state.columnImages ? [...this.state.columnImages] : null;
 
-    if (drag) {
+
+    if (dragKey && columnImages) {
 
       // 移动量, 鼠标在 X 轴上移动的距离
-      const moveX = e.pageX - this.originX;
+      const distance = e.pageX - this.originX;
 
-      // 移动方向, moveX > 0 表示向右移动
-      const direction: boolean = moveX > 0;
+      // 移动方向, 1 表示和右边的列交换，-1 表示和左边的列交换
+      const direction: number = distance > 0 ? 1 : -1;
 
       // 新的 offsetLeft 等于目标对象的原始 offsetLeft 加上鼠标相对于按下时的移动量
-      const left = this.originPositionLeft + moveX;
-      this.setState({
-        drag: {...drag, left}
-      });
+      const left = this.startLeft + distance;
+
+      // 当前拖动列
+      const currentColumn = columnImages.find(v => v.key === dragKey);
+
+      if (currentColumn) {
+        // 更新当前拖动列的位置, setState 后更新
+        currentColumn.rect = {...currentColumn.rect, left}
+
+        // 当前拖动列的索引
+        const index = columnImages.indexOf(currentColumn);
+
+        // 下一列的列索引
+        const nextIndex = index + direction;
 
 
+        if (nextIndex >= 0 && nextIndex <= columnImages.length - 1) {
 
+          // 下一列
+          const nextColumn = columnImages[nextIndex];
+
+          // console.log("columnImages", columnImages.map(v => v.key), index, nextIndex);
+
+          console.log("nextColumn", nextIndex, nextColumn);
+          if (Math.abs(distance) > nextColumn.rect.width / 2) {
+            this.endLeft = nextColumn.rect.left;
+            nextColumn.rect = {...nextColumn.rect, left: this.startLeft}
+            // columnImages.splice(index, 0, columnImages.splice(nextIndex, 1)[0]);
+            // this.startLeft = nextColumn.rect.left;
+          }
+        }
+
+        this.setState({
+          columnImages
+        });
+      }
     }
   }
 
-  exchangeColumn(direction: boolean, distance: number, drag: IDrag) {
+  exchangeColumn(direction: boolean, distance: number, dragKey: string) {
+    const columns = this.columns;
+
+    // console.log("columns", columns);
+    //
+    // // 当前拖动的列
+    // const dragKeyColumn = columns.find(v => v.key === dragKey.column);
+    //
+    // // 要交换的目标列
+    // let targetColumn: Column;
+    //
+    // // 要交换的目标列索引
+    // let targetColumnIndex: number;
+    //
+    // if (dragKeyColumn) {
+    //
+    //   // 当前拖动的列索引
+    //   const index = columns.indexOf(dragKeyColumn);
+    //
+    //   // 要交换的目标列索引
+    //   const targetColumnIndex = direction ? Math.min(columns.length, index + 1) : Math.max(0, index - 1);
+    //
+    //   // 要交换的目标列
+    //   const targetColumn = columns[targetColumnIndex];
+    //
+    //
+    //   if (targetColumn && Math.abs(distance) > targetColumn.width / 2) {
+    //     console.log(dragKeyColumn, targetColumn);
+    //
+    //
+    //     columns[index] = targetColumn;
+    //     columns[targetColumnIndex] = dragKeyColumn;
+    //
+    //     this.setState({
+    //       columns
+    //     });
+    //
+    //     this.startLeft += targetColumn.width;
+    //     this.originX += targetColumn.width;
+    //   }
+    //
+    //
+    // }
+  }
+
+  // 获取 th 的 dom 节点
+  handleRefs(key: string, element: HTMLElement) {
+    if (!element) {
+      return false;
+    }
     const {columns} = this.state;
 
-    // 当前的拖动列
-    const dragColumn = columns.find(v => v.key === drag.column);
+    // console.log("key, element", key, element);
+    // console.log("this.columnImages", this.columnImages);
 
-    if (dragColumn) {
-      // let targetColumn: Column;
 
-      if (dragColumn && direction) {
-        
+    Object.defineProperty(this.columnImages, key, {
+      enumerable: true,
+      configurable: true,
+      writable: true,
+      value: {
+        key,
+        column: columns.find(v => v.key === key),
+        element,
+
+        // 根据 dom 节点获取宽高和位置信息
+        rect: element.getBoundingClientRect()
       }
-    }
+    });
   }
 
 
 
   public render() {
     const {rows, total, limit = 10, itemSize = 7, selectable = false} = this.props;
-    const {columns, params, selectedIDs, drag} = this.state;
+    const {columns, params, selectedIDs, dragKey, columnImages} = this.state;
     const {page = 1} = params;
 
-    const dragColumn = drag && columns.find(v => v.key === drag.column);
-
-
+    // console.log("columnImages", columnImages);
 
     // console.log("drag", drag, this.state.originPageX);
 
     return (
-      <div className="lister">
+      <div className="lister" style={{
+        userSelect: dragKey ? 'none' : 'text'
+      }}>
         <table>
           <caption>
             <div className="lister-caption">
@@ -271,8 +388,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                 </th>
               )}
               {columns.map(column => (
-                <th key={column.title}>
-                  <div className={(!dragColumn || dragColumn.key !== column.key) ? 'head-cell' : 'head-cell head-hidden'}>
+                <th key={column.title} ref={this.handleRefs.bind(this, column.key)} style={{width: `${column.width}px`}}>
+                  <div className={columnImages ? 'head-cell head-hidden' : 'head-cell'}>
                     <div
                       className="head-cell-title"
                       onMouseDown={this.handleMouseDown.bind(this, column.key)}
@@ -282,6 +399,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                   {column.resize && <div className="lister-resize" />}
                 </th>
               ))}
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -296,53 +414,56 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                 )}
                 {columns.map(column => (
                   <td key={column.title}>
-                    <div className={(!dragColumn || dragColumn.key !== column.key) ? 'td-cell' : 'td-cell td-hidden'}>{column.rander(row)}</div>
+                    <div className={columnImages ? 'td-cell td-hidden' : 'td-cell'}>{column.rander(row)}</div>
                   </td>
                 ))}
+                <td></td>
               </tr>
             ))}
           </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={columns.length + (selectable ? 1 : 0)}>
-                <PageList
-                  total={total}
-                  limit={limit}
-                  itemSize={itemSize}
-                  page={page}
-                  gotoPage={this.handleGotoPage.bind(this)}
-                />
-              </td>
-            </tr>
-          </tfoot>
         </table>
+        <div>
+          <PageList
+            total={total}
+            limit={limit}
+            itemSize={itemSize}
+            page={page}
+            gotoPage={this.handleGotoPage.bind(this)}
+          />
+        </div>
 
-        {drag && dragColumn &&
-          <table className="dragging" style={{
-            left: `${drag.left}px`,
-            top: `${drag.top}px`,
-            width: `${drag.width}px`,
-            height: `${drag.height}px`
-          }}>
-            <thead>
-              <tr>
-                <th>
-                  <div className="head-cell">
-                    <div className="head-cell-title">{dragColumn.title}</div>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={i}>
-                  <td>
-                    <div className="td-cell">{dragColumn.rander(row)}</div>
-                  </td>
+        {columnImages &&
+          columnImages.map(columnImage => (
+            <table
+              key={columnImage.key}
+              className={columnImage.key === dragKey ? 'drag-current' : 'drag-column'}
+              style={{
+                left: `${columnImage.rect.left}px`,
+                top: `${columnImage.rect.top}px`,
+                width: `${columnImage.rect.width}px`,
+                height: `${columnImage.rect.height}px`
+              }}
+            >
+              <thead>
+                <tr>
+                  <th>
+                    <div className="head-cell">
+                      <div className="head-cell-title">{columnImage.column && columnImage.column.title}</div>
+                    </div>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i}>
+                    <td>
+                      <div className="td-cell">{columnImage.column && columnImage.column.rander(row)}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ))
         }
 
       </div>
