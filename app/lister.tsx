@@ -5,7 +5,7 @@ import {PageList} from '~/components/PageList';
 import './scss/index.scss';
 import './scss/icon.scss';
 
-type IListerProps = {
+interface IListerProps {
   columns: Array<Column>;
   rows: Array<any>;
   total: number;
@@ -32,11 +32,12 @@ interface IColumnImage {
   }
 }
 
-type IListerState = {
+interface IListerState {
   columns: Array<Column>;
   selectedIDs: Array<string>;
   params: IParams;
   dragging: string | null;
+  resizing: string | null;
   columnImages: Array<IColumnImage> | null;
 }
 
@@ -70,6 +71,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
         page
       },
       dragging: null,
+      resizing: null,
       columnImages: null,
     }
 
@@ -179,16 +181,16 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
   /* 鼠标按下开始拖动，拖动思路：
     1. 获取 th 的 dom 节点，储存在 this.columnRefs 对象。实现：this.handleRefs()
-    2. 按下 th 开始拖动，根据 储存的 columnImages 生成每一列的镜像，取得宽高和位置信息。实现：this.handleMouseDown()
-    3. 根据鼠标移动距离，超过下一列宽度的一半，交换两列。实现：this.handleMouseMove()， this.exchangeColumn()
+    2. 按下 th 开始拖动，根据 储存的 columnRefs 生成每一列的镜像，取得宽高和位置信息。实现：this.handleMouseDown()
+    3. 根据鼠标移动距离，超过下一列宽度的一半，交换两列。实现：this.handleMouseMove()
    */
+
   handleMouseDown(key: string, e: React.MouseEvent<HTMLDivElement>) {
     const {columns} = this.state;
 
-    console.log("this.columnRefs", this.columnRefs);
-
-
     const columnImages = columns.map(column => {
+
+      // 根据 dom 节点获取宽高和位置信息
       const rect = this.columnRefs[column.key].getBoundingClientRect();
 
       if (key === column.key) {
@@ -198,8 +200,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       return {
         key: column.key,
         column,
-
-        // 根据 dom 节点获取宽高和位置信息
         rect: {
           left: rect.left,
           top: rect.top,
@@ -218,10 +218,17 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
   }
 
+  handleMouseDownOnResize(key: string, e: React.MouseEvent<HTMLDivElement>) {
+    this.pageX = e.pageX;
+    this.setState({
+      resizing: key
+    });
+  }
+
   handleMouseUp(e: MouseEvent) {
     console.log("handleMouseUp", e);
 
-    const {dragging} = this.state;
+    const {dragging, resizing} = this.state;
     const columnImages = this.columnImages;
 
     if (dragging && columnImages) {
@@ -230,8 +237,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
       if (currentColumn) {
         currentColumn.rect = {...currentColumn.rect, left}
-
-        console.log("currentColumn", currentColumn);
 
         const columns = columnImages.map(v => {
           return v.column;
@@ -253,10 +258,16 @@ export class Lister extends React.Component<IListerProps, IListerState> {
         }, 300);
       }
     }
+
+    if (resizing) {
+      this.setState({
+        resizing: null
+      })
+    }
   }
 
   handleMouseMove(e: MouseEvent) {
-    const {dragging} = this.state;
+    const {dragging, resizing, columns} = this.state;
     const columnImages = this.columnImages;
     const keys = this.state.columnImages?.map(column => column.key);
 
@@ -299,63 +310,29 @@ export class Lister extends React.Component<IListerProps, IListerState> {
           }
         }
 
-        console.log("keys", keys);
-
+        // 为了实现 transition 效果，使用 state.columnImages 的列顺序加上 this.columnImages 的列位置信息生成新的 columnImages。
         const newColumnImages = [...columnImages].sort((a, b) => {
           return keys.indexOf(a.key) - keys.indexOf(b.key);
         })
-
-        console.log("newColumnImages", newColumnImages);
 
         this.setState({
           columnImages: newColumnImages
         });
       }
     }
-  }
 
-  exchangeColumn(direction: boolean, distance: number, dragging: string) {
+    if (resizing) {
+      const newColumns = columns.map(column => ({
+        ...column,
+        width: resizing === column.key ? Math.max(60, (e.pageX - this.pageX + column.width)) : column.width
+      }))
 
-    // console.log("columns", columns);
-    //
-    // // 当前拖动的列
-    // const draggingColumn = columns.find(v => v.key === dragging.column);
-    //
-    // // 要交换的目标列
-    // let targetColumn: Column;
-    //
-    // // 要交换的目标列索引
-    // let targetColumnIndex: number;
-    //
-    // if (draggingColumn) {
-    //
-    //   // 当前拖动的列索引
-    //   const index = columns.indexOf(draggingColumn);
-    //
-    //   // 要交换的目标列索引
-    //   const targetColumnIndex = direction ? Math.min(columns.length, index + 1) : Math.max(0, index - 1);
-    //
-    //   // 要交换的目标列
-    //   const targetColumn = columns[targetColumnIndex];
-    //
-    //
-    //   if (targetColumn && Math.abs(distance) > targetColumn.width / 2) {
-    //     console.log(draggingColumn, targetColumn);
-    //
-    //
-    //     columns[index] = targetColumn;
-    //     columns[targetColumnIndex] = draggingColumn;
-    //
-    //     this.setState({
-    //       columns
-    //     });
-    //
-    //     this.startLeft += targetColumn.width;
-    //     this.originX += targetColumn.width;
-    //   }
-    //
-    //
-    // }
+      this.setState({
+        columns: newColumns
+      });
+
+      this.pageX = e.pageX;
+    }
   }
 
   // 获取 th 的 dom 节点
@@ -376,7 +353,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
   public render() {
     const {rows, total, limit = 10, itemSize = 7, selectable = false} = this.props;
-    const {columns, params, selectedIDs, dragging, columnImages} = this.state;
+    const {columns, params, selectedIDs, dragging, resizing, columnImages} = this.state;
     const {page = 1} = params;
 
     console.log("columnImages", columnImages);
@@ -385,7 +362,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
     return (
       <div className="lister" style={{
-        userSelect: dragging ? 'none' : 'text'
+        userSelect: (dragging || resizing) ? 'none' : 'text'
       }}>
         <table>
           <caption>
@@ -414,7 +391,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                     >{column.title}</div>
                     {column.order && <div className="head-sort" onClick={this.handleOrder.bind(this, column.key)}><i className="fa-angle-down" /></div>}
                   </div>
-                  {column.resize && <div className="lister-resize" />}
+                  {column.resize && <div onMouseDown={this.handleMouseDownOnResize.bind(this, column.key)} className="lister-resize" />}
                 </th>
               ))}
               <th></th>

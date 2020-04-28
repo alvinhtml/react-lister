@@ -2,13 +2,13 @@ $border-color: #e7ecf1;
 
 .lister {
   table {
-    // background-color: transparent;
     border: 1px solid $border-color;
     border-bottom: 0;
     border-collapse: collapse;
     line-height: 2em;
     box-sizing: border-box;
     width: 100%;
+    table-layout: fixed;
 
     caption {
       padding: 8px 0;
@@ -25,9 +25,6 @@ $border-color: #e7ecf1;
     }
 
     thead {
-      // border-left: 1px solid $border-color;
-      // border-right: 1px solid $border-color;
-      // border-top: 1px solid $border-color;
       background-color: #f9fafb;
 
       tr {
@@ -40,7 +37,6 @@ $border-color: #e7ecf1;
           position: relative;
 
           &:last-child {
-            // border-right: 1px solid $border-color;
 
             .lister-resize {
               display: none;
@@ -98,23 +94,19 @@ $border-color: #e7ecf1;
     }
 
     tbody {
-      // border-left: 1px solid $border-color;
-
       tr:nth-child(2n) {
         background-color: #fcfcfd;
       }
-
-      // tr {
-      //   &>td:last-child {
-      //     border-right: 1px solid $border-color;
-      //   }
-      // }
 
       td {
         border-bottom: 1px solid $border-color;
 
         &> .td-cell {
           margin: 0.5em 0.78571429em;
+          overflow: hidden;
+          width: calc(100% - 0.78571429em);
+          white-space: nowrap;
+          text-overflow: ellipsis;
         }
 
         &> .td-hidden {
