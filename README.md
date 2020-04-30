@@ -2,33 +2,7 @@
 
 react data list
 
-## Development
-
-- Install npm packages
-
-    ```
-  npm install
-    ```
-
-- Launch dev server
-
-    ```
-  npm run start
-    ```
-
-- Lint
-
-    ```
-  npm run lint
-    ```
-
-- Build
-
-    ```
-  npm run build
-    ```
-
-## Install react-miniui
+## Install
 
 ```bash
 npm install react-lister --save
@@ -36,12 +10,17 @@ npm install react-lister --save
 
 ## Usage
 
+### Example
+
+`List.jsx`
+
 ```js
 import * as React from 'react';
-import Lister, {column} from 'react-lister';
-import UserActions from '~/components/user/UserActions'
+import {ButtonGroup, Button} from 'react-miniui';
+import Lister, {Column, withLister} from 'react-lister';
+import'~/node_modules/react-lister/dist/lister.css';
 
-// 可以单独对每列进行配置，这里使用统一配置
+
 const options = {
   order: true, // 是否需要排序
   visibility: true, // 是否可见
@@ -49,56 +28,116 @@ const options = {
   resize: true // 是否允许拖动改变列宽度
 }
 
-//创建一个三列的表格
-const columns = [
-  new Column('用户', Column.getValue('name'), row => <span>{row.name}</span>, options),
-  new Column('邮箱', Column.getValue('email'), row => <span>{row.name}</span>, options),
-  new Column('操作', null, row => <UserActions row={row} />, options)
+const userColumns = [
+  new Column('用户', 'name', row => <React.Fragment>{row.name}</React.Fragment>, options),
+  new Column('邮箱', 'email', row => <span>{row.email}</span>, options),
+  new Column('角色', 'type', row => <span>{row.type}</span>, options),
+  new Column('操作', 'option', row => <Button size="small" color="red">delete</Button>)
 ]
 
-// user 的数据可以通过 AJAX 或 fetch 获取
-const users = [{
-  name: '张三',
-  email: 'zhangsan@gmail.com'
-}, {
-  name: '李四',
-  email: 'lsi@gmail.com'
-}, {
-  name: '王二',
-  email: 'wanger@gmail.com'
-}]
+class UserList extends React.Component {
 
-function User() {
-  return (
-    <div>
-      <Lister
-        rows={users}
-        columns={columns}
-        currentPage={1}
-      >
-      </Lister>
-    </div>
-  );
+  constructor(props) {
+    super(props);
+    this.state = {
+      selectedIDs: []
+    };
+  }
+
+  handleSelect = (selectedIDs: Array<string>) => {
+    this.setState({
+      selectedIDs
+    });
+  };
+
+  handleDeleteAll() {
+    const {selectedIDs} = this.state;
+  }
+
+  render() {
+    const {toggleSelectAll, rows, reload, createRef, columns} = this.props;
+
+    return (
+      <div>
+        <Lister
+          ref={createRef}
+          rows={rows}
+          total={103}
+          columns={columns}
+          page={1}
+          selectable={true}
+          onSelect={this.handleSelect}
+          reload={reload}
+        >
+          <ButtonGroup>
+            <Button color="blue" onClick={toggleSelectAll}>select all</Button>
+            <Button color="red" onClick={this.handleDeleteAll.bind(this)}>del all</Button>
+          </ButtonGroup>
+        </Lister>
+      </div>
+    );
+  }
 }
 
-export default User;
-
+export default withLister(UserList, 'user', userColumns);
 ```
 
 `UserActions.jsx`
 
 ```js
-import * as React from 'react';
-import {Button} from 'react-miniui';
+import React, {Component} from 'react';
+import superagent from 'superagent';
+import List from '~/List';
 
-export default class UserActions extends React.Component {
+const rowKey = 'id';
+
+class User extends Component {
+
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      users: []
+    }
+  }
+
+  componentDidMount() {
+    this.loadUser(1);
+  }
+
+  async loadUser(page = 1, order = ['name', 'asc']) {
+    try {
+      const users = await superagent.get('/api/user')
+        .query({
+          page,
+          order: `${order[0]},${order[1]}`
+        });
+
+      this.setState({
+        users: users.body
+      })
+
+    } catch(err) {
+      throw err;
+    }
+  }
+
   render() {
-    return(
-      <>
-        <Button color="green" size="small">编辑</Button>
-        <Button color="red" size="small">删除</Button>
-      </>
-    )
+    const {users} = this.state;
+
+    return (
+      <div>
+        <List
+          rows={users}
+          rowKey={rowKey}
+          reload={({page, order}) => {
+            this.loadUser(page, order);
+          }}
+        />
+      </div>
+    );
   }
 }
+
+export default User;
 ```
