@@ -29,4 +29,13 @@ export class Column {
       return row[key];
     }
   }
+
+  public setVisibility(visibility: boolean) {
+    this.visibility = !!visibility;
+  }
+
+  public setWidth(width: number) {
+    this.width = width;
+  }
+
 }

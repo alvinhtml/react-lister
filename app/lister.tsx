@@ -1,6 +1,7 @@
 import * as React from "react";
 import {Column} from '~/column';
-import {PageList} from '~/components/PageList';
+import PageList from '~/components/PageList';
+import Config from '~/components/Config';
 
 import './scss/index.scss';
 import './scss/icon.scss';
@@ -19,6 +20,7 @@ interface IListerProps {
 
 interface IParams {
   page: number;
+  limit: number;
   order?: Array<string>;
 }
 
@@ -29,7 +31,7 @@ interface IColumnImage {
     left: number;
     top: number;
     width: number;
-  }
+  } | null;
 }
 
 interface IListerState {
@@ -62,13 +64,14 @@ export class Lister extends React.Component<IListerProps, IListerState> {
   constructor(props: IListerProps) {
     super(props);
 
-    const {page = 1, columns} = props;
+    const {page = 1, limit = 10, columns} = props;
 
     this.state = {
       columns,
       selectedIDs: [],
       params: {
-        page
+        page,
+        limit
       },
       dragging: null,
       resizing: null,
@@ -189,23 +192,27 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     const {columns} = this.state;
 
     const columnImages = columns.map(column => {
-
       // 根据 dom 节点获取宽高和位置信息
-      const rect = this.columnRefs[column.key].getBoundingClientRect();
+      const rect = column.visibility ? this.columnRefs[column.key].getBoundingClientRect() : null;
 
-      if (key === column.key) {
-        this.mouseoffsetLeft = e.pageX - rect.left;
-      }
-
-      return {
+      const newColumn: IColumnImage = {
         key: column.key,
         column,
-        rect: {
+        rect: null
+      };
+
+      if (rect) {
+        if (key === column.key) {
+          this.mouseoffsetLeft = e.pageX - rect.left;
+        }
+        newColumn.rect = {
           left: rect.left,
           top: rect.top,
           width: rect.width
         }
       }
+
+      return newColumn;
     });
 
     this.setState({
@@ -226,8 +233,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
   }
 
   handleMouseUp(e: MouseEvent) {
-    console.log("handleMouseUp", e);
-
     const {dragging, resizing} = this.state;
     const columnImages = this.columnImages;
 
@@ -235,15 +240,12 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       const left = this.pageX - this.mouseoffsetLeft;
       const currentColumn = columnImages.find(v => v.key === dragging);
 
-      if (currentColumn) {
+      if (currentColumn && currentColumn.rect) {
         currentColumn.rect = {...currentColumn.rect, left}
 
         const columns = columnImages.map(v => {
           return v.column;
         })
-
-        console.log("columns", columns);
-        console.log("state columns", this.state.columns);
 
         this.setState({
           dragging: null,
@@ -285,22 +287,36 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       // 当前拖动列
       const currentColumn = columnImages.find(v => v.key === dragging);
 
-      if (currentColumn) {
+      if (currentColumn && currentColumn.rect) {
         // 更新当前拖动列的位置, setState 后更新
         currentColumn.rect = {...currentColumn.rect, left}
 
         // 当前拖动列的索引
         const index = columnImages.indexOf(currentColumn);
 
-        // 下一列的列索引
-        const nextIndex = index + direction;
 
+        // 获取下一列和下一列的索引，和下一列，并且跳过隐藏列
+        const {nextColumn, nextIndex} = (() => {
 
-        if (nextIndex >= 0 && nextIndex <= columnImages.length - 1) {
+          let nextIndex = index;
+          let nextColumn = null;
 
-          // 下一列
-          const nextColumn = columnImages[nextIndex];
+          // nextColumn.rect !== null
+          while(!nextColumn) {
+            nextIndex += direction;
+            if (nextIndex >= 0 && nextIndex <= columnImages.length - 1) {
+              if (columnImages[nextIndex].rect) {
+                nextColumn = columnImages[nextIndex];
+              }
+            } else {
+              break;
+            }
+          }
 
+          return {nextIndex, nextColumn};
+        })();
+
+        if (nextColumn && nextColumn.rect) {
           // 当拖动距离超过下一列的一半时
           if (Math.abs(distance) > nextColumn.rect.width / 2) {
             const nextColumnLeft = nextColumn.rect.left;
@@ -322,14 +338,14 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     }
 
     if (resizing) {
-      const newColumns = columns.map(column => ({
-        ...column,
-        width: resizing === column.key ? Math.max(60, (e.pageX - this.pageX + column.width)) : column.width
-      }))
+      const currentColumn = columns.find(column => column.key === resizing);
 
-      this.setState({
-        columns: newColumns
-      });
+      if (currentColumn) {
+        currentColumn.setWidth(Math.max(60, (e.pageX - this.pageX + currentColumn.width)));
+        this.setState({
+          columns
+        });
+      }
 
       this.pageX = e.pageX;
     }
@@ -349,16 +365,38 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     });
   }
 
+  setVisibility(key: string, visibility: boolean) {
+    const {columns} = this.state;
+    const currentColumn = columns.find(column => column.key === key);
+    if (currentColumn) {
+      currentColumn.setVisibility(visibility);
+      this.setState({
+        columns
+      });
+    }
+  }
+
+  setLimit(limit: number) {
+    const params = {...this.state.params, limit, page: 1};
+
+    this.setState({
+      params
+    });
+
+    this.reload(params);
+  }
+
+  saveConfigs() {
+
+  }
 
 
   public render() {
-    const {rows, total, limit = 10, itemSize = 7, selectable = false} = this.props;
+    const {rows, total, itemSize = 7, selectable = false} = this.props;
     const {columns, params, selectedIDs, dragging, resizing, columnImages} = this.state;
-    const {page = 1} = params;
+    const {page = 1, limit} = params;
+    const visibleColumns: Array<Column> = columns.filter(column => column.visibility);
 
-    console.log("columnImages", columnImages);
-
-    // console.log("drag", drag, this.state.originPageX);
 
     return (
       <div className="lister" style={{
@@ -371,7 +409,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                 {this.props.children}
               </div>
               <div style={{textAlign: 'right'}}>
-                <div className="lister-button"><i className="fa-cog" /></div>
+                <Config setVisibility={this.setVisibility.bind(this)} setLimit={this.setLimit.bind(this)} limit={limit} columns={columns} />
               </div>
             </div>
           </caption>
@@ -382,7 +420,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                   <input onChange={this.handleSelectAll.bind(this)} type="checkbox" />
                 </th>
               )}
-              {columns.map(column => (
+              {visibleColumns.map(column => (
                 <th key={column.title} ref={this.handleRefs.bind(this, column.key)} style={{width: `${column.width}px`}}>
                   <div className={columnImages ? 'head-cell head-hidden' : 'head-cell'}>
                     <div
@@ -407,7 +445,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                     </div>
                   </td>
                 )}
-                {columns.map(column => (
+                {visibleColumns.map(column => (
                   <td key={column.title}>
                     <div className={columnImages ? 'td-cell td-hidden' : 'td-cell'}>{column.rander(row)}</div>
                   </td>
@@ -428,7 +466,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
         </div>
 
         {columnImages &&
-          columnImages.map(columnImage => (
+          columnImages.filter(columnImage => columnImage.rect).map(columnImage => columnImage.rect && (
             <table
               key={columnImage.key}
               data-key={columnImage.key}
@@ -449,7 +487,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, i) => (
+                {rows.slice(0, 20).map((row, i) => (
                   <tr key={i}>
                     <td>
                       <div className="td-cell">{columnImage.column && columnImage.column.rander(row)}</div>
