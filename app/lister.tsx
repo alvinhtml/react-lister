@@ -41,6 +41,7 @@ interface IListerState {
   dragging: string | null;
   resizing: string | null;
   columnImages: Array<IColumnImage> | null;
+  filter: boolean;
 }
 
 
@@ -59,7 +60,11 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     [key: string] : HTMLElement
   } = {};
 
+  tableContainer: HTMLDivElement;
+
   columnImages: Array<IColumnImage> | null = null;
+
+  timeout: number;
 
   constructor(props: IListerProps) {
     super(props);
@@ -76,6 +81,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       dragging: null,
       resizing: null,
       columnImages: null,
+      filter: false
     }
 
     this.handleMouseUp = this.handleMouseUp.bind(this);
@@ -191,6 +197,9 @@ export class Lister extends React.Component<IListerProps, IListerState> {
   handleMouseDown(key: string, e: React.MouseEvent<HTMLDivElement>) {
     const {columns} = this.state;
 
+    const tableContainerRectLeft = this.tableContainer ? this.tableContainer.getBoundingClientRect().left : 0;
+    const tableContainerScrollLeft: number = this.tableContainer ? this.tableContainer.scrollLeft : 0;
+
     const columnImages = columns.map(column => {
       // 根据 dom 节点获取宽高和位置信息
       const rect = column.visibility ? this.columnRefs[column.key].getBoundingClientRect() : null;
@@ -206,8 +215,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
           this.mouseoffsetLeft = e.pageX - rect.left;
         }
         newColumn.rect = {
-          left: rect.left,
-          top: rect.top,
+          left: rect.left - tableContainerRectLeft + tableContainerScrollLeft,
+          top: 0,
           width: rect.width
         }
       }
@@ -272,6 +281,9 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     const {dragging, resizing, columns} = this.state;
     const columnImages = this.columnImages;
     const keys = this.state.columnImages?.map(column => column.key);
+    const tableContainerRectLeft: number = this.tableContainer ? this.tableContainer.getBoundingClientRect().left : 0;
+    const tableContainerScrollLeft: number = this.tableContainer ? this.tableContainer.scrollLeft : 0;
+
 
     if (dragging && columnImages && keys) {
 
@@ -281,15 +293,16 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       // 移动方向, 1 表示和右边的列交换，-1 表示和左边的列交换
       const direction: number = distance > 0 ? 1 : -1;
 
-      // 新的 offsetLeft 等于目标对象的原始 offsetLeft 加上鼠标相对于按下时的移动量
-      const left = e.pageX - this.mouseoffsetLeft;
+      // 计算 currentColumn 相对于 tableContainer 的 left
+      const left = e.pageX - this.mouseoffsetLeft - tableContainerRectLeft + tableContainerScrollLeft;
 
       // 当前拖动列
       const currentColumn = columnImages.find(v => v.key === dragging);
 
       if (currentColumn && currentColumn.rect) {
+        console.log("left, currentColumn.rect.left", left, currentColumn.rect.left);
         // 更新当前拖动列的位置, setState 后更新
-        currentColumn.rect = {...currentColumn.rect, left}
+        currentColumn.rect = {...currentColumn.rect, left: left}
 
         // 当前拖动列的索引
         const index = columnImages.indexOf(currentColumn);
@@ -364,6 +377,10 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       value: element
     });
   }
+  // 获取 table container div 的 dom 节点
+  handleTableContainerRef(element: HTMLDivElement) {
+    this.tableContainer = element;
+  }
 
   setVisibility(key: string, visibility: boolean) {
     const {columns} = this.state;
@@ -390,71 +407,171 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
   }
 
+  toggleSearch() {
+    this.setState({
+      filter: !this.state.filter
+    })
+  }
+
+  columnFilter() {
+
+  }
+
+  handleFilterChange(key: string, event: Event) {
+    const {columns} = this.state;
+    const currentColumn = columns.find(column => column.key === key);
+
+    if (currentColumn) {
+      const element = event.currentTarget as HTMLInputElement;
+      const value = element.value;
+      currentColumn.setSearchValue(value);
+      this.setState({
+        columns
+      }, () => {
+        clearTimeout(this.timeout);
+        this.timeout = setTimeout(() => {
+          const params = {...this.state.params, search: [key, value]};
+
+          this.setState({
+            params
+          });
+
+          this.reload(params);
+        }, 500);
+      });
+    }
+  }
 
   public render() {
-    const {rows, total, itemSize = 7, selectable = false} = this.props;
-    const {columns, params, selectedIDs, dragging, resizing, columnImages} = this.state;
+    const {total, itemSize = 7, selectable = false} = this.props;
+    const {columns, params, selectedIDs, dragging, resizing, columnImages, filter} = this.state;
     const {page = 1, limit} = params;
     const visibleColumns: Array<Column> = columns.filter(column => column.visibility);
 
+    const rows = this.props.rows.filter(row => {
+      return visibleColumns.map(column => {
+        return column.getter ? (column.getter(row).toLowerCase().indexOf(column.searchVlaue.toLowerCase()) !== -1) : true
+      }).every(isChecked => isChecked);
+    });
+
+
+    console.log("rows", rows);
 
     return (
       <div className="lister" style={{
         userSelect: (dragging || resizing) ? 'none' : 'text'
       }}>
-        <table>
-          <caption>
-            <div className="lister-caption">
-              <div style={{flex: 1, textAlign: 'left'}}>
-                {this.props.children}
-              </div>
-              <div style={{textAlign: 'right'}}>
-                <Config setVisibility={this.setVisibility.bind(this)} setLimit={this.setLimit.bind(this)} limit={limit} columns={columns} />
-              </div>
-            </div>
-          </caption>
-          <thead>
-            <tr>
-              {selectable && (
-                <th style={{width: '18px'}}>
-                  <input onChange={this.handleSelectAll.bind(this)} type="checkbox" />
-                </th>
-              )}
-              {visibleColumns.map(column => (
-                <th key={column.title} ref={this.handleRefs.bind(this, column.key)} style={{width: `${column.width}px`}}>
-                  <div className={columnImages ? 'head-cell head-hidden' : 'head-cell'}>
-                    <div
-                      className="head-cell-title"
-                      onMouseDown={this.handleMouseDown.bind(this, column.key)}
-                    >{column.title}</div>
-                    {column.order && <div className="head-sort" onClick={this.handleOrder.bind(this, column.key)}><i className="fa-angle-down" /></div>}
-                  </div>
-                  {column.resize && <div onMouseDown={this.handleMouseDownOnResize.bind(this, column.key)} className="lister-resize" />}
-                </th>
-              ))}
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i}>
+        <div className="lister-caption">
+          <div style={{flex: 1, textAlign: 'left'}}>
+            {this.props.children}
+          </div>
+          <div style={{textAlign: 'right'}}>
+            <div className="lister-btn" onClick={this.toggleSearch.bind(this)}><i className="fa-search" /></div>
+            <Config setVisibility={this.setVisibility.bind(this)} setLimit={this.setLimit.bind(this)} limit={limit} columns={columns} />
+          </div>
+        </div>
+        <div className="lister-table-container" ref={this.handleTableContainerRef.bind(this)} >
+          <table>
+            <thead>
+              <tr>
                 {selectable && (
-                  <td>
-                    <div className="td-cell">
-                      <input checked={selectedIDs.includes(row.id)} onChange={this.handleSelectChange.bind(this, row.id)} type="checkbox" />
-                    </div>
-                  </td>
+                  <th style={{width: '18px'}}>
+                    <input onChange={this.handleSelectAll.bind(this)} type="checkbox" />
+                  </th>
                 )}
                 {visibleColumns.map(column => (
-                  <td key={column.title}>
-                    <div className={columnImages ? 'td-cell td-hidden' : 'td-cell'}>{column.rander(row)}</div>
-                  </td>
+                  <th key={column.title} ref={this.handleRefs.bind(this, column.key)} style={{width: `${column.width}px`}}>
+                    <div className={columnImages ? 'head-cell head-hidden' : 'head-cell'}>
+                      <div
+                        className="head-cell-title"
+                        onMouseDown={this.handleMouseDown.bind(this, column.key)}
+                      >{column.title}</div>
+                      {column.order && <div className="head-sort" onClick={this.handleOrder.bind(this, column.key)}><i className="fa-angle-down" /></div>}
+                    </div>
+                    {column.resize && <div onMouseDown={this.handleMouseDownOnResize.bind(this, column.key)} className="lister-resize" />}
+                  </th>
                 ))}
-                <td></td>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filter &&
+                <tr className="lister-filter-row">
+                  {selectable && (
+                    <td style={{width: '18px'}}></td>
+                  )}
+                  {visibleColumns.map(column => (
+                    <td key={column.title}>
+                      <div className={columnImages ? 'td-cell td-hidden' : 'td-cell'}>
+                        {column.getter
+                          ? <input name={`lister-search-${column.key}`} onChange={this.handleFilterChange.bind(this, column.key)} />
+                          : null
+                        }
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              }
+              {rows.map((row, i) => (
+                <tr key={i}>
+                  {selectable && (
+                    <td>
+                      <div className="td-cell">
+                        <input checked={selectedIDs.includes(row.id)} onChange={this.handleSelectChange.bind(this, row.id)} type="checkbox" />
+                      </div>
+                    </td>
+                  )}
+                  {visibleColumns.map(column => (
+                    <td key={column.title}>
+                      <div className={columnImages ? 'td-cell td-hidden' : 'td-cell'}>{column.rander(row)}</div>
+                    </td>
+                  ))}
+                  <td></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {columnImages &&
+            columnImages.filter(columnImage => columnImage.rect).map(columnImage => columnImage.rect && (
+              <table
+                key={columnImage.key}
+                data-key={columnImage.key}
+                className={columnImage.key === dragging ? 'drag-current' : 'drag-column'}
+                style={{
+                  left: `${columnImage.rect.left}px`,
+                  top: `${columnImage.rect.top}px`,
+                  width: `${columnImage.rect.width}px`
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th>
+                      <div className="head-cell">
+                        <div className="head-cell-title">{columnImage.column && columnImage.column.title}</div>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filter &&
+                    <tr className="lister-filter-row">
+                      <td>
+                        <div className="td-cell"><input /></div>
+                      </td>
+                    </tr>
+                  }
+                  {rows.slice(0, 20).map((row, i) => (
+                    <tr key={i}>
+                      <td>
+                        <div className="td-cell">{columnImage.column && columnImage.column.rander(row)}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ))
+          }
+        </div>
         <div>
           <PageList
             total={total}
@@ -464,40 +581,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
             gotoPage={this.handleGotoPage.bind(this)}
           />
         </div>
-
-        {columnImages &&
-          columnImages.filter(columnImage => columnImage.rect).map(columnImage => columnImage.rect && (
-            <table
-              key={columnImage.key}
-              data-key={columnImage.key}
-              className={columnImage.key === dragging ? 'drag-current' : 'drag-column'}
-              style={{
-                left: `${columnImage.rect.left}px`,
-                top: `${columnImage.rect.top}px`,
-                width: `${columnImage.rect.width}px`
-              }}
-            >
-              <thead>
-                <tr>
-                  <th>
-                    <div className="head-cell">
-                      <div className="head-cell-title">{columnImage.column && columnImage.column.title}</div>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.slice(0, 20).map((row, i) => (
-                  <tr key={i}>
-                    <td>
-                      <div className="td-cell">{columnImage.column && columnImage.column.rander(row)}</div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ))
-        }
       </div>
     );
   }

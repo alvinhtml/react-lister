@@ -23,39 +23,39 @@ export default class Config extends React.Component<IConfigProps, {opened: boole
   }
 
   //阻止鼠标 onMouseDown 事件冒泡
-	stopMouseEvent(e: React.MouseEvent<HTMLElement>) {
+	stopMouseEvent(e: React.MouseEvent<HTMLElement>): void {
 		e.nativeEvent.stopImmediatePropagation();
 		e.stopPropagation();
 	}
 
-  handleMouseDown(e: MouseEvent) {
+  handleMouseDown(): void {
     this.hide();
   }
 
-  handleToggle() {
+  handleToggle(): void {
     this.state.opened ? this.hide() : this.show();
   }
 
-  show() {
+  show(): void {
     document.addEventListener("mousedown", this.handleMouseDown, false);
     this.setState({
       opened: true
     });
   }
 
-  hide() {
+  hide(): void {
     document.addEventListener("mousedown", this.handleMouseDown, false);
     this.setState({
       opened: false
     });
   }
 
-  setVisibility(key: string, visibility: boolean) {
+  setVisibility(key: string, visibility: boolean): void {
     const {setVisibility} = this.props;
     setVisibility(key, !visibility);
   }
 
-  public render() {
+  public render(): React.Node {
     const {columns, limit, setLimit} = this.props;
     const {opened} = this.state;
 
@@ -65,7 +65,7 @@ export default class Config extends React.Component<IConfigProps, {opened: boole
         <div className={`lister-config-body ${opened ? 'opened' : ''}`}>
           <h4>每页显示条数</h4>
           <ul className="column-limit">
-            {this.limitItem.map(item => <li key={item} className={`lister-btn tiny ${item === limit ? 'active' : ''}`} onClick={() => {setLimit(item)}}>{item}</li>)}
+            {this.limitItem.map(item => <li key={item} className={`lister-btn tiny ${item === limit ? 'active' : ''}`} onClick={(): void => {setLimit(item)}}>{item}</li>)}
           </ul>
           <h4>显示项</h4>
           <ul className="column-visibility">

@@ -22,7 +22,6 @@ module.exports = {
     },
     "plugins": [
         "react",
-        "flowtype",
         "@typescript-eslint"
     ],
     "settings": {
@@ -30,8 +29,5 @@ module.exports = {
             "version": "detect" //React版本
         }
     },
-    "rules": {
-      "flowtype/define-flow-type": 1,
-      "flowtype/use-flow-type": 1
-    }
+    "rules": {}
 };

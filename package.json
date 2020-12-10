@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "rm -rf ./dist && webpack --mode development",
     "start": "webpack-dev-server",
-    "lint": "npx eslint src/**/*.tsx",
+    "lint": "npx eslint app/**/*.tsx",
     "build": "rm -rf ./dist && webpack --mode production"
   },
   "repository": {
