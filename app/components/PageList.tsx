@@ -13,7 +13,7 @@ export default class PageList extends React.Component<IPageListProps> {
     this.props.gotoPage(page);
   }
 
-  public render(): React.Node {
+  public render(): React.ReactNode {
     const {total, limit, itemSize, page} = this.props;
 
     // 总页数

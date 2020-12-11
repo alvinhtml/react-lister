@@ -2,6 +2,7 @@ import * as React from "react";
 import {Column} from '~/column';
 import PageList from '~/components/PageList';
 import Config from '~/components/Config';
+import SearchInput from '~/components/SearchInput';
 
 import './scss/index.scss';
 import './scss/icon.scss';
@@ -413,24 +414,18 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     })
   }
 
-  columnFilter() {
-
-  }
-
-  handleFilterChange(key: string, event: Event) {
+  handleFilter(value: string, key: string) {
     const {columns} = this.state;
     const currentColumn = columns.find(column => column.key === key);
 
     if (currentColumn) {
-      const element = event.currentTarget as HTMLInputElement;
-      const value = element.value;
       currentColumn.setSearchValue(value);
       this.setState({
         columns
       }, () => {
         clearTimeout(this.timeout);
-        this.timeout = setTimeout(() => {
-          const params = {...this.state.params, search: [key, value]};
+        this.timeout = window.setTimeout(() => {
+          const params = {...this.state.params, page: 1, search: [key, value]};
 
           this.setState({
             params
@@ -466,7 +461,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
             {this.props.children}
           </div>
           <div style={{textAlign: 'right'}}>
-            <div className="lister-btn" onClick={this.toggleSearch.bind(this)}><i className="fa-search" /></div>
+            <div className="lister-btn" onClick={this.toggleSearch.bind(this)}><i className="fa-search" /> 筛选</div>
             <Config setVisibility={this.setVisibility.bind(this)} setLimit={this.setLimit.bind(this)} limit={limit} columns={columns} />
           </div>
         </div>
@@ -491,7 +486,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                     {column.resize && <div onMouseDown={this.handleMouseDownOnResize.bind(this, column.key)} className="lister-resize" />}
                   </th>
                 ))}
-                <th></th>
+                <th style={{width: '12px'}}></th>
               </tr>
             </thead>
             <tbody>
@@ -503,10 +498,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
                   {visibleColumns.map(column => (
                     <td key={column.title}>
                       <div className={columnImages ? 'td-cell td-hidden' : 'td-cell'}>
-                        {column.getter
-                          ? <input name={`lister-search-${column.key}`} onChange={this.handleFilterChange.bind(this, column.key)} />
-                          : null
-                        }
+                        <SearchInput visibility={!!column.getter} columnKey={column.key} onChange={this.handleFilter.bind(this)} />
                       </div>
                     </td>
                   ))}

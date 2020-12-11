@@ -55,7 +55,7 @@ export default class Config extends React.Component<IConfigProps, {opened: boole
     setVisibility(key, !visibility);
   }
 
-  public render(): React.Node {
+  public render(): React.ReactNode {
     const {columns, limit, setLimit} = this.props;
     const {opened} = this.state;
 

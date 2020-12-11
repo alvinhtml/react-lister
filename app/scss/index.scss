@@ -205,10 +205,6 @@ $gray: #acacac;
   position: relative;
   text-align: left;
 
-  .lister-btn {
-    cursor: default;
-  }
-
   .lister-config-body {
     display: none;
     position: absolute;
@@ -288,19 +284,48 @@ $gray: #acacac;
   }
 }
 
+.lister-search-input {
+  width: 100%;
+  position: relative;
+
+  span {
+    display: none;
+    position: absolute;
+    left: auto;
+    right: 8px;
+    top: 8px;
+    border-radius: 50%;
+    height: 16px;
+    width: 16px;
+    line-height: 16px;
+    text-align: center;
+    background-color: #f9fafb;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #fff6f6;
+    }
+  }
+
+  &:hover {
+    span {
+      display: inline-block;
+    }
+  }
+}
+
+
 .lister-btn {
 	cursor: pointer;
 	display: inline-block;
-	padding: 0 1.28571429em;
-	margin: 0;
-	height: 2.57142857em;
+  padding: 0 0.71428571em;
+  height: 2.28571429em;
+  line-height: 2.28571429em;
 	min-height: 1em;
-	line-height: 2.42857143em;
 	outline: none;
 	user-select: none;
 	color: rgba(0, 0, 0, .6);
  	background-color: #fff;
-	border: 1px solid $lightgray;
 	border-radius: .28571429em;
 	font-size: 14px;
 	font-weight: normal;
