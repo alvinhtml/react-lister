@@ -17,6 +17,7 @@ interface IListerProps {
   selectable?: boolean;
   onSelect?: Function;
   reload?: Function;
+  paginationMode?: 'web-frontend' | 'server-api';
 }
 
 interface IParams {
@@ -43,10 +44,8 @@ interface IListerState {
   resizing: string | null;
   columnImages: Array<IColumnImage> | null;
   filter: boolean;
+  rows: Array<any>;
 }
-
-
-
 
 export class Lister extends React.Component<IListerProps, IListerState> {
   static Column = Column;
@@ -82,7 +81,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       dragging: null,
       resizing: null,
       columnImages: null,
-      filter: false
+      filter: false,
+      rows: []
     }
 
     this.handleMouseUp = this.handleMouseUp.bind(this);
@@ -106,6 +106,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
     this.setState({
       params
+    }, () => {
+      this.updateStateRows();
     });
     this.reload(params);
   }
@@ -176,6 +178,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
     this.setState({
       params: newParams
+    }, () => {
+      this.updateStateRows();
     });
 
     this.reload(newParams);
@@ -390,6 +394,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       currentColumn.setVisibility(visibility);
       this.setState({
         columns
+      }, () => {
+        this.updateStateRows();
       });
     }
   }
@@ -399,6 +405,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
     this.setState({
       params
+    }, () => {
+      this.updateStateRows();
     });
 
     this.reload(params);
@@ -437,20 +445,60 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     }
   }
 
-  public render() {
-    const {total, itemSize = 7, selectable = false} = this.props;
-    const {columns, params, selectedIDs, dragging, resizing, columnImages, filter} = this.state;
-    const {page = 1, limit} = params;
-    const visibleColumns: Array<Column> = columns.filter(column => column.visibility);
+  updateStateRows() {
+    const {rows, paginationMode, total} = this.props;
+    const {params: {page, order, limit}} = this.state;
+    let newRows = rows;
 
-    const rows = this.props.rows.filter(row => {
-      return visibleColumns.map(column => {
-        return column.getter ? (column.getter(row).toLowerCase().indexOf(column.searchVlaue.toLowerCase()) !== -1) : true
-      }).every(isChecked => isChecked);
+    // 只对显示的并且带有筛选值(searchVlaue)的列做过滤
+    const columns: Array<Column> = this.state.columns.filter(column => (column.visibility && column.getter && column.searchVlaue !== ''));
+
+    //根据 rows.length 和 total 判断分页方式
+    if (rows.length == total && rows.length > limit) {
+      // 前端实现分页
+      // 筛选
+      newRows = columns.length
+        ? rows.filter(row => {
+          return columns.map(column => {
+            return column.getter ? (column.getter(row).toLowerCase().indexOf(column.searchVlaue.toLowerCase()) !== -1) : true
+          }).every(isChecked => isChecked);
+        })
+        : rows;
+
+      //排序
+      if (order && order.length) {
+        newRows = rows.sort((a, b) => {
+          if (order[1] === 'asc') {
+            return a[order[0]] < b[order[0]];
+          } else {
+            return a[order[0]] > b[order[0]];
+          }
+        })
+      }
+
+      console.log("newRows", newRows);
+
+      // 分页
+      const start = (page - 1) *  limit;
+      newRows.slice(start, start + limit);
+    }
+
+    this.setState({
+      rows: newRows
     });
 
+    console.log("rows.length, newRows.length: ", rows.length, newRows.length);
+  }
 
-    console.log("rows", rows);
+  componentDidMount() {
+    this.updateStateRows();
+  }
+
+  public render() {
+    const {total, itemSize = 7, selectable = false} = this.props;
+    const {columns, params, selectedIDs, dragging, resizing, columnImages, filter, rows} = this.state;
+    const {page = 1, limit} = params;
+    const visibleColumns: Array<Column> = columns.filter(column => column.visibility);
 
     return (
       <div className="lister" style={{
