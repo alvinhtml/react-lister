@@ -4,12 +4,18 @@ import PageList from '~/components/PageList';
 import Config from '~/components/Config';
 import SearchInput from '~/components/SearchInput';
 
+import {compareMaps} from '~/utils/tools';
+
 import './scss/index.scss';
 import './scss/icon.scss';
 
+interface RowData {
+  [key: string]: any;
+}
+
 interface IListerProps {
   columns: Array<Column>;
-  rows: Array<any>;
+  rows: Array<RowData>;
   total: number;
   limit: number;
   page?: number;
@@ -24,6 +30,9 @@ interface IParams {
   page: number;
   limit: number;
   order?: Array<string>;
+  search: {
+    [key: string]: string;
+  };
 }
 
 interface IColumnImage {
@@ -44,7 +53,8 @@ interface IListerState {
   resizing: string | null;
   columnImages: Array<IColumnImage> | null;
   filter: boolean;
-  rows: Array<any>;
+  rows: Array<RowData>;
+  total: number;
 }
 
 export class Lister extends React.Component<IListerProps, IListerState> {
@@ -66,23 +76,28 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
   timeout: number;
 
+  rows: Array<RowData> = [];
+
   constructor(props: IListerProps) {
     super(props);
 
-    const {page = 1, limit = 10, columns} = props;
+    const {page = 1, limit = 10, columns, rows, total} = props;
 
     this.state = {
       columns,
       selectedIDs: [],
       params: {
         page,
-        limit
+        limit,
+        order: [],
+        search: {}
       },
       dragging: null,
       resizing: null,
       columnImages: null,
       filter: false,
-      rows: []
+      rows: rows || [],
+      total: total
     }
 
     this.handleMouseUp = this.handleMouseUp.bind(this);
@@ -106,10 +121,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
     this.setState({
       params
-    }, () => {
-      this.updateStateRows();
     });
-    this.reload(params);
+    // this.reload(params);
   }
 
   public toggleSelectAll(e: any): void {
@@ -178,11 +191,9 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
     this.setState({
       params: newParams
-    }, () => {
-      this.updateStateRows();
     });
 
-    this.reload(newParams);
+    // this.reload(newParams);
   }
 
   reload(params: IParams): void {
@@ -394,8 +405,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       currentColumn.setVisibility(visibility);
       this.setState({
         columns
-      }, () => {
-        this.updateStateRows();
       });
     }
   }
@@ -405,11 +414,9 @@ export class Lister extends React.Component<IListerProps, IListerState> {
 
     this.setState({
       params
-    }, () => {
-      this.updateStateRows();
     });
 
-    this.reload(params);
+    // this.reload(params);
   }
 
   saveConfigs() {
@@ -419,86 +426,134 @@ export class Lister extends React.Component<IListerProps, IListerState> {
   toggleSearch() {
     this.setState({
       filter: !this.state.filter
-    })
+    });
   }
 
   handleFilter(value: string, key: string) {
-    const {columns} = this.state;
-    const currentColumn = columns.find(column => column.key === key);
+    const {params} = this.state;
 
-    if (currentColumn) {
-      currentColumn.setSearchValue(value);
+    this.setState({
+      params: {...params, page: 1, search: {...params.search, [key]: value}}
+    });
+
+
+
+
+    // const {columns} = this.state;
+    // const {rows} = this.props;
+    // const currentColumn = columns.find(column => column.key === key);
+    //
+    // if (currentColumn) {
+    //   currentColumn.setSearchValue(value);
+    //   this.setState({
+    //     columns,
+    //     rows: newRows
+    //   }, () => {
+    //     clearTimeout(this.timeout);
+    //     this.timeout = window.setTimeout(() => {
+    //       const params = {...this.state.params, page: 1, search: [key, value]};
+    //
+    //       this.setState({
+    //         params
+    //       });
+    //
+    //       this.reload(params);
+    //     }, 500);
+    //   });
+    // }
+  }
+
+  static updateRowsByFilter(columns: Array<Column>, rows: Array<Rows>) {
+    // 筛选
+    return rows.filter(row => {
+      // 只对显示的并且带有筛选值(searchVlaue)的列做过滤
+      return columns.filter(column => (column.visibility && column.getter && column.searchVlaue !== '')).map(column => {
+        return column.getter ? (column.getter(row).toLowerCase().indexOf(column.searchVlaue.toLowerCase()) !== -1) : true
+      });
+    });
+  }
+
+  static updateRowsByOrder(params: IParams, rows: Array<Rows>) {
+    //排序
+    if (order && order.length) {
+      return rows.sort((a, b) => {
+        if (order[1] === 'asc') {
+          return a[order[0]] < b[order[0]];
+        } else {
+          return a[order[0]] > b[order[0]];
+        }
+      })
+    }
+    return rows;
+  }
+
+  static updateRowsByPage(params: IParams, rows: Array<Rows>) {
+    const start = (page - 1) *  limit;
+    return rows.slice(start, start + limit);
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    const {rows, total, reload} = this.props;
+    const {params: {page, order, limit, search}, columns} = this.state;
+
+    const rowsDiff = Object.is(prevProps.rows, rows);
+    const searchDiff = Object.is(prevState.params.search, search);
+    const orderDiff = prevState.params.order.join() === order.join();
+    const pageDiff = prevState.params.page === page && prevState.params.limit === limit;
+
+    // console.log("prevState.params.search", prevState.params.search, this.state.params.search);
+    // console.log("prevState.params.order", prevState.params.order, this.state.params.order);
+    // console.log("prevState.params.page", prevState.params.page, this.state.params.page);
+    // console.log("searchDiff, orderDiff, pageDiff", searchDiff, orderDiff, pageDiff);
+
+    // 如果 params 发生变化，则更调用外部新列表的接口，用于接口实现搜索，排序和分页的情况
+    if (!searchDiff || !orderDiff || !pageDiff) {
+      this.reload(this.state.params);
+    }
+
+    if (!reload && (!searchDiff || !orderDiff || !rowsDiff)) {
+      console.info("========== run: Search and Order ==========");
+      // 筛选
+      let newRows = rows.filter(row => {
+        // 只对显示的并且有筛选值的列(column.key in search)做过滤
+        return columns.filter(column => (column.visibility && column.getter && column.key in search)).map(column => {
+          console.log(column.getter(row).toLowerCase(), search[column.key].toLowerCase(), column.getter(row).toLowerCase().indexOf(search[column.key].toLowerCase()));
+          return column.getter ? (column.getter(row).toLowerCase().indexOf(search[column.key].toLowerCase()) !== -1) : true
+        }).every(isChecked => isChecked);
+      });
+
+      //排序
+      if (order && order.length) {
+        newRows = newRows.sort((a, b) => {
+          const strA = typeof a[order[0]] === 'number' ? a[order[0]] : a[order[0]].toUpperCase();
+          const strB = typeof b[order[0]] === 'number' ? b[order[0]] : b[order[0]].toUpperCase();
+          const sortCriterion = order[1] === 'asc' ? 1 : -1;
+          if (strA > strB) {
+            return -sortCriterion;
+          }
+          if (strB > strA) {
+            return sortCriterion;
+          }
+          return 0;
+        });
+      }
       this.setState({
-        columns
-      }, () => {
-        clearTimeout(this.timeout);
-        this.timeout = window.setTimeout(() => {
-          const params = {...this.state.params, page: 1, search: [key, value]};
-
-          this.setState({
-            params
-          });
-
-          this.reload(params);
-        }, 500);
+        rows: newRows,
+        total: newRows.length
       });
     }
   }
 
-  updateStateRows() {
-    const {rows, paginationMode, total} = this.props;
-    const {params: {page, order, limit}} = this.state;
-    let newRows = rows;
-
-    // 只对显示的并且带有筛选值(searchVlaue)的列做过滤
-    const columns: Array<Column> = this.state.columns.filter(column => (column.visibility && column.getter && column.searchVlaue !== ''));
-
-    //根据 rows.length 和 total 判断分页方式
-    if (rows.length == total && rows.length > limit) {
-      // 前端实现分页
-      // 筛选
-      newRows = columns.length
-        ? rows.filter(row => {
-          return columns.map(column => {
-            return column.getter ? (column.getter(row).toLowerCase().indexOf(column.searchVlaue.toLowerCase()) !== -1) : true
-          }).every(isChecked => isChecked);
-        })
-        : rows;
-
-      //排序
-      if (order && order.length) {
-        newRows = rows.sort((a, b) => {
-          if (order[1] === 'asc') {
-            return a[order[0]] < b[order[0]];
-          } else {
-            return a[order[0]] > b[order[0]];
-          }
-        })
-      }
-
-      console.log("newRows", newRows);
-
-      // 分页
-      const start = (page - 1) *  limit;
-      newRows.slice(start, start + limit);
-    }
-
-    this.setState({
-      rows: newRows
-    });
-
-    console.log("rows.length, newRows.length: ", rows.length, newRows.length);
-  }
-
-  componentDidMount() {
-    this.updateStateRows();
-  }
-
   public render() {
-    const {total, itemSize = 7, selectable = false} = this.props;
-    const {columns, params, selectedIDs, dragging, resizing, columnImages, filter, rows} = this.state;
+    const {itemSize = 7, selectable = false} = this.props;
+    const {columns, params, selectedIDs, dragging, resizing, columnImages, filter, total} = this.state;
     const {page = 1, limit} = params;
     const visibleColumns: Array<Column> = columns.filter(column => column.visibility);
+    const stateRows = this.state.rows;
+
+    // 分页
+    const start = (page - 1) *  limit;
+    const rows = stateRows.length > limit ? stateRows.slice(start, start + limit) : stateRows;
 
     return (
       <div className="lister" style={{
