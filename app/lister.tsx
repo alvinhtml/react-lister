@@ -216,6 +216,8 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     const tableContainerRectLeft = this.tableContainer ? this.tableContainer.getBoundingClientRect().left : 0;
     const tableContainerScrollLeft: number = this.tableContainer ? this.tableContainer.scrollLeft : 0;
 
+    console.log("tableContainerRectLeft", tableContainerRectLeft, tableContainerScrollLeft);
+
     const columnImages = columns.map(column => {
       // 根据 dom 节点获取宽高和位置信息
       const rect = column.visibility ? this.columnRefs[column.key].getBoundingClientRect() : null;
@@ -260,9 +262,11 @@ export class Lister extends React.Component<IListerProps, IListerState> {
   handleMouseUp(e: MouseEvent) {
     const {dragging, resizing} = this.state;
     const columnImages = this.columnImages;
+    const tableContainerRectLeft: number = this.tableContainer ? this.tableContainer.getBoundingClientRect().left : 0;
+    const tableContainerScrollLeft: number = this.tableContainer ? this.tableContainer.scrollLeft : 0;
 
     if (dragging && columnImages) {
-      const left = this.pageX - this.mouseoffsetLeft;
+      const left = this.pageX - this.mouseoffsetLeft - tableContainerRectLeft + tableContainerScrollLeft;
       const currentColumn = columnImages.find(v => v.key === dragging);
 
       if (currentColumn && currentColumn.rect) {
@@ -316,7 +320,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
       const currentColumn = columnImages.find(v => v.key === dragging);
 
       if (currentColumn && currentColumn.rect) {
-        console.log("left, currentColumn.rect.left", left, currentColumn.rect.left);
+        // console.log("left, currentColumn.rect.left", left, currentColumn.rect.left);
         // 更新当前拖动列的位置, setState 后更新
         currentColumn.rect = {...currentColumn.rect, left: left}
 
@@ -324,7 +328,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
         const index = columnImages.indexOf(currentColumn);
 
 
-        // 获取下一列和下一列的索引，和下一列，并且跳过隐藏列
+        // 获取下一列和下一列的索引，并且跳过隐藏列
         const {nextColumn, nextIndex} = (() => {
 
           let nextIndex = index;
@@ -346,19 +350,26 @@ export class Lister extends React.Component<IListerProps, IListerState> {
         })();
 
         if (nextColumn && nextColumn.rect) {
+
           // 当拖动距离超过下一列的一半时
           if (Math.abs(distance) > nextColumn.rect.width / 2) {
             const nextColumnLeft = nextColumn.rect.left;
-            nextColumn.rect = {...nextColumn.rect, left: this.pageX - this.mouseoffsetLeft}
-            this.pageX = nextColumnLeft + this.mouseoffsetLeft;
+            nextColumn.rect = {
+              ...nextColumn.rect,
+              left: this.pageX - this.mouseoffsetLeft - tableContainerRectLeft + tableContainerScrollLeft;
+            }
+            this.pageX = nextColumnLeft + this.mouseoffsetLeft + tableContainerRectLeft - tableContainerScrollLeft;
+
+            // console.log("this.pageX", nextColumnLeft, this.pageX, this.mouseoffsetLeft);
             columnImages.splice(index, 0, columnImages.splice(nextIndex, 1)[0]);
           }
         }
 
         // 为了实现 transition 效果，使用 state.columnImages 的列顺序加上 this.columnImages 的列位置信息生成新的 columnImages。
+        // 为什么 columnImages 顺序变化会导致动画失效？暂时还没研究明白，猜测 react 创建了新的元素，已经不是原来的元素了，所以加在上面的动画也失效了？
         const newColumnImages = [...columnImages].sort((a, b) => {
           return keys.indexOf(a.key) - keys.indexOf(b.key);
-        })
+        });
 
         this.setState({
           columnImages: newColumnImages
@@ -415,8 +426,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     this.setState({
       params
     });
-
-    // this.reload(params);
   }
 
   saveConfigs() {
@@ -435,61 +444,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     this.setState({
       params: {...params, page: 1, search: {...params.search, [key]: value}}
     });
-
-
-
-
-    // const {columns} = this.state;
-    // const {rows} = this.props;
-    // const currentColumn = columns.find(column => column.key === key);
-    //
-    // if (currentColumn) {
-    //   currentColumn.setSearchValue(value);
-    //   this.setState({
-    //     columns,
-    //     rows: newRows
-    //   }, () => {
-    //     clearTimeout(this.timeout);
-    //     this.timeout = window.setTimeout(() => {
-    //       const params = {...this.state.params, page: 1, search: [key, value]};
-    //
-    //       this.setState({
-    //         params
-    //       });
-    //
-    //       this.reload(params);
-    //     }, 500);
-    //   });
-    // }
-  }
-
-  static updateRowsByFilter(columns: Array<Column>, rows: Array<Rows>) {
-    // 筛选
-    return rows.filter(row => {
-      // 只对显示的并且带有筛选值(searchVlaue)的列做过滤
-      return columns.filter(column => (column.visibility && column.getter && column.searchVlaue !== '')).map(column => {
-        return column.getter ? (column.getter(row).toLowerCase().indexOf(column.searchVlaue.toLowerCase()) !== -1) : true
-      });
-    });
-  }
-
-  static updateRowsByOrder(params: IParams, rows: Array<Rows>) {
-    //排序
-    if (order && order.length) {
-      return rows.sort((a, b) => {
-        if (order[1] === 'asc') {
-          return a[order[0]] < b[order[0]];
-        } else {
-          return a[order[0]] > b[order[0]];
-        }
-      })
-    }
-    return rows;
-  }
-
-  static updateRowsByPage(params: IParams, rows: Array<Rows>) {
-    const start = (page - 1) *  limit;
-    return rows.slice(start, start + limit);
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -574,7 +528,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
               <tr>
                 {selectable && (
                   <th style={{width: '18px'}}>
-                    <input onChange={this.handleSelectAll.bind(this)} type="checkbox" />
+                    <input checked={this.props.rows.length === selectedIDs.length} onChange={this.handleSelectAll.bind(this)} type="checkbox" />
                   </th>
                 )}
                 {visibleColumns.map(column => (
