@@ -4,8 +4,6 @@ import PageList from '~/components/PageList';
 import Config from '~/components/Config';
 import SearchInput from '~/components/SearchInput';
 
-import {compareMaps} from '~/utils/tools';
-
 import './scss/index.scss';
 import './scss/icon.scss';
 
@@ -216,8 +214,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     const tableContainerRectLeft = this.tableContainer ? this.tableContainer.getBoundingClientRect().left : 0;
     const tableContainerScrollLeft: number = this.tableContainer ? this.tableContainer.scrollLeft : 0;
 
-    console.log("tableContainerRectLeft", tableContainerRectLeft, tableContainerScrollLeft);
-
     const columnImages = columns.map(column => {
       // 根据 dom 节点获取宽高和位置信息
       const rect = column.visibility ? this.columnRefs[column.key].getBoundingClientRect() : null;
@@ -356,7 +352,7 @@ export class Lister extends React.Component<IListerProps, IListerState> {
             const nextColumnLeft = nextColumn.rect.left;
             nextColumn.rect = {
               ...nextColumn.rect,
-              left: this.pageX - this.mouseoffsetLeft - tableContainerRectLeft + tableContainerScrollLeft;
+              left: this.pageX - this.mouseoffsetLeft - tableContainerRectLeft + tableContainerScrollLeft
             }
             this.pageX = nextColumnLeft + this.mouseoffsetLeft + tableContainerRectLeft - tableContainerScrollLeft;
 
@@ -446,13 +442,15 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     });
   }
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(prevProps: IListerProps, prevState: IListerState) {
     const {rows, total, reload} = this.props;
-    const {params: {page, order, limit, search}, columns} = this.state;
+    const {params: {page, order = [], limit, search}, columns} = this.state;
+
+    const prevOrder = prevState.params.order || [];
 
     const rowsDiff = Object.is(prevProps.rows, rows);
     const searchDiff = Object.is(prevState.params.search, search);
-    const orderDiff = prevState.params.order.join() === order.join();
+    const orderDiff = prevOrder.join() === order.join();
     const pageDiff = prevState.params.page === page && prevState.params.limit === limit;
 
     // console.log("prevState.params.search", prevState.params.search, this.state.params.search);
@@ -466,12 +464,10 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     }
 
     if (!reload && (!searchDiff || !orderDiff || !rowsDiff)) {
-      console.info("========== run: Search and Order ==========");
       // 筛选
       let newRows = rows.filter(row => {
         // 只对显示的并且有筛选值的列(column.key in search)做过滤
         return columns.filter(column => (column.visibility && column.getter && column.key in search)).map(column => {
-          console.log(column.getter(row).toLowerCase(), search[column.key].toLowerCase(), column.getter(row).toLowerCase().indexOf(search[column.key].toLowerCase()));
           return column.getter ? (column.getter(row).toLowerCase().indexOf(search[column.key].toLowerCase()) !== -1) : true
         }).every(isChecked => isChecked);
       });
