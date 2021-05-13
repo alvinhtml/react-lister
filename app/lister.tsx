@@ -21,7 +21,6 @@ interface IListerProps {
   selectable?: boolean;
   onSelect?: Function;
   reload?: Function;
-  paginationMode?: 'web-frontend' | 'server-api';
 }
 
 interface IParams {
@@ -120,7 +119,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     this.setState({
       params
     });
-    // this.reload(params);
   }
 
   public toggleSelectAll(e: any): void {
@@ -190,16 +188,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     this.setState({
       params: newParams
     });
-
-    // this.reload(newParams);
-  }
-
-  reload(params: IParams): void {
-    const {reload} = this.props;
-
-    if (typeof reload === 'function') {
-      reload(params);
-    }
   }
 
   /* 鼠标按下开始拖动，拖动思路：
@@ -207,7 +195,6 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     2. 按下 th 开始拖动，根据 储存的 columnRefs 生成每一列的镜像，取得宽高和位置信息。实现：this.handleMouseDown()
     3. 根据鼠标移动距离，超过下一列宽度的一半，交换两列。实现：this.handleMouseMove()
    */
-
   handleMouseDown(key: string, e: React.MouseEvent<HTMLDivElement>) {
     const {columns} = this.state;
 
@@ -442,6 +429,33 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     });
   }
 
+
+  // 刷新: 重载 props.rows 数据
+  refresh(params: IParams): void {
+    const {reload} = this.props;
+
+    if (typeof reload === 'function') {
+      reload(params);
+    }
+  }
+
+  // 根据条件判断是否刷新
+  reload(params: IParams): void {
+    const {reload, rows} = this.props;
+
+    // 当 params 改变时，如果由前端分页，则不需要重载数据
+    if (!this.isFrontendPaging(params) && typeof reload === 'function') {
+      reload(params);
+    }
+  }
+
+  // 判断是否由前端实现分页，适用于一个接口返回所有数据，比如 500 条，然后用 JS 实现分页
+  // 另一种情况由后端实现分页，一般需要在接口中添加 url 参数如 ?page=3&limit=20, 然后使用数据库进行分页查询。
+  isFrontendPaging(params: IParams): boolean {
+    const {rows, total} = this.props;
+    return rows.length === total && rows.length > params.limit;
+  }
+
   componentDidUpdate(prevProps: IListerProps, prevState: IListerState) {
     const {rows, total, reload} = this.props;
     const {params: {page, order = [], limit, search}, columns} = this.state;
@@ -453,17 +467,12 @@ export class Lister extends React.Component<IListerProps, IListerState> {
     const orderDiff = prevOrder.join() === order.join();
     const pageDiff = prevState.params.page === page && prevState.params.limit === limit;
 
-    // console.log("prevState.params.search", prevState.params.search, this.state.params.search);
-    // console.log("prevState.params.order", prevState.params.order, this.state.params.order);
-    // console.log("prevState.params.page", prevState.params.page, this.state.params.page);
-    // console.log("searchDiff, orderDiff, pageDiff", searchDiff, orderDiff, pageDiff);
-
-    // 如果 params 发生变化，则更调用外部新列表的接口，用于接口实现搜索，排序和分页的情况
-    if (!searchDiff || !orderDiff || !pageDiff) {
+    // 如果 params 发生变化，则调用外部更新列表的接口，用于后端接口实现搜索，排序和分页的情况
+    if ((!searchDiff || !orderDiff || !pageDiff)) {
       this.reload(this.state.params);
     }
 
-    if (!reload && (!searchDiff || !orderDiff || !rowsDiff)) {
+    if (this.isFrontendPaging(this.state.params) && (!searchDiff || !orderDiff || !rowsDiff)) {
       // 筛选
       let newRows = rows.filter(row => {
         // 只对显示的并且有筛选值的列(column.key in search)做过滤
